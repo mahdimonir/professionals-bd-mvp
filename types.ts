@@ -27,6 +27,13 @@ export interface User {
   location?: string;
 }
 
+export interface Review {
+  id: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
 export interface ProfessionalProfile {
   id: string;
   userId: string;
@@ -40,6 +47,7 @@ export interface ProfessionalProfile {
   isApproved?: boolean;
   bio: string;
   rating: number;
+  reviewCount: number;
   status?: AvailabilityStatus;
 }
 
@@ -54,6 +62,7 @@ export interface Booking {
   price: number;
   professionalName: string;
   notes?: string;
+  review?: Review;
 }
 
 export interface ChatMessage {

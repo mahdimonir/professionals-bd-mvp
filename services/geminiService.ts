@@ -1,11 +1,8 @@
+import { GoogleGenAI, LiveServerMessage, Modality, Blob, Type } from '@google/genai';
 
-import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
-
-// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
 export class GeminiService {
   // Concierge Chat (Gemini 3 Flash)
   async getConciergeResponse(prompt: string, history: { role: 'user' | 'model', parts: { text: string }[] }[]) {
-    // Always use the required initialization format: new GoogleGenAI({ apiKey: process.env.API_KEY })
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -17,8 +14,53 @@ export class GeminiService {
         systemInstruction: "You are ProBD Concierge, a helpful assistant for ProfessionalsBD, an expert network in Bangladesh. Help users find Legal, Financial, or Medical experts. Use a professional and friendly tone. Mention BDT (৳) when discussing rates.",
       }
     });
-    // Use .text property directly as it is a getter, not a function.
     return response.text;
+  }
+
+  // AI Expert Recommendations
+  async getExpertRecommendations(userHistory: any[], allExperts: any[]) {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const prompt = `
+      User Booking History: ${JSON.stringify(userHistory)}
+      Available Experts: ${JSON.stringify(allExperts.map(e => ({ id: e.id, name: e.name, specialties: e.specialties, bio: e.bio })))}
+      
+      Analyze the user's booking history and recommend the top 3 most relevant experts from the available list. 
+      For each recommendation, provide a brief 'reason' why they are a good match (e.g., "Since you recently consulted a lawyer, you might need a tax expert for compliance").
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          systemInstruction: "You are a professional matching engine. Analyze user needs and suggest experts. Return only JSON.",
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              recommendations: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    expertId: { type: Type.STRING },
+                    reason: { type: Type.STRING }
+                  },
+                  required: ['expertId', 'reason']
+                }
+              }
+            },
+            required: ['recommendations']
+          }
+        }
+      });
+
+      return JSON.parse(response.text || '{"recommendations": []}');
+    } catch (err) {
+      console.error("AI Recommendation Error:", err);
+      return { recommendations: [] };
+    }
   }
 
   // Live Consultation (Gemini 2.5 Flash Native Audio)
@@ -28,7 +70,6 @@ export class GeminiService {
     onError: (e: any) => void,
     onClose: () => void
   }) {
-    // Create a new instance right before making an API call to ensure current credentials.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     return ai.live.connect({
       model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -39,7 +80,6 @@ export class GeminiService {
         onclose: callbacks.onClose,
       },
       config: {
-        // responseModalities must be an array with a single Modality.AUDIO element.
         responseModalities: [Modality.AUDIO],
         inputAudioTranscription: {},
         outputAudioTranscription: {},
@@ -51,11 +91,6 @@ export class GeminiService {
   }
 }
 
-/**
- * Helper: Decode PCM Base64 to AudioBuffer
- * The audio bytes returned by the API is raw PCM data. 
- * It is not a standard file format like .wav or .mp3 and contains no header.
- */
 export async function decodeAudioData(
   data: Uint8Array,
   ctx: AudioContext,
@@ -75,7 +110,6 @@ export async function decodeAudioData(
   return buffer;
 }
 
-// Helper: Base64 Decoding (Manually implemented as per guidelines)
 export function decode(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -86,7 +120,6 @@ export function decode(base64: string) {
   return bytes;
 }
 
-// Helper: Base64 Encoding (Manually implemented as per guidelines)
 export function encode(bytes: Uint8Array) {
   let binary = '';
   const len = bytes.byteLength;

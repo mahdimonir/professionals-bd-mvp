@@ -87,9 +87,12 @@ const ExpertCard: React.FC<Props> = ({ expert, user }) => {
               <div className={`w-1.5 h-1.5 rounded-full bg-current ${statusConfig.pulse ? 'animate-pulse' : ''}`}></div>
               <span className="text-[10px] font-black uppercase tracking-wider">{expert.status || 'Offline'}</span>
             </div>
-            <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-800">
-              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{expert.rating}</span>
+            <div className="flex flex-col items-end">
+              <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-800">
+                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{expert.rating}</span>
+              </div>
+              <p className="text-[9px] text-slate-400 mt-1 font-bold uppercase tracking-tighter">({expert.reviewCount} Reviews)</p>
             </div>
           </div>
         </div>
