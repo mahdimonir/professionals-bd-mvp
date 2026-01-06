@@ -2,7 +2,8 @@
 export enum Role {
   USER = 'USER',
   PROFESSIONAL = 'PROFESSIONAL',
-  ADMIN = 'ADMIN'
+  ADMIN = 'ADMIN',
+  MODERATOR = 'MODERATOR'
 }
 
 export enum BookingStatus {
@@ -19,6 +20,8 @@ export interface User {
   role: Role;
   avatar?: string;
   isVerified: boolean;
+  bio?: string;
+  location?: string;
 }
 
 export interface ProfessionalProfile {

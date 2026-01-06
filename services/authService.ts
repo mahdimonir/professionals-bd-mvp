@@ -13,28 +13,45 @@ export class AuthService {
       client_id: CLIENT_ID,
       callback: (response: any) => {
         const decoded: any = jwtDecode(response.credential);
+        
+        // Mocking role assignment for demo purposes: 
+        // In a real app, this would be fetched from the DB based on email.
+        let role = Role.USER;
+        if (decoded.email.includes('admin')) role = Role.ADMIN;
+        if (decoded.email.includes('pro')) role = Role.PROFESSIONAL;
+        if (decoded.email.includes('mod')) role = Role.MODERATOR;
+
         const user: User = {
           id: decoded.sub,
           name: decoded.name,
           email: decoded.email,
           avatar: decoded.picture,
-          role: Role.USER, // Default role for new sign-ins
+          role: role,
           isVerified: decoded.email_verified
         };
         this.saveSession(user);
         callback(user);
       },
-      auto_select: true
+      auto_select: true,
+      itp_support: true // Helps with some cross-site tracking prevention issues
     });
 
     (window as any).google.accounts.id.prompt();
   }
 
   static renderButton(elementId: string) {
-    if (typeof window === 'undefined' || !(window as any).google) return;
+    const el = document.getElementById(elementId);
+    if (typeof window === 'undefined' || !(window as any).google || !el) return;
+    
     (window as any).google.accounts.id.renderButton(
-      document.getElementById(elementId),
-      { theme: 'outline', size: 'large', shape: 'pill' }
+      el,
+      { 
+        theme: 'outline', 
+        size: 'large', 
+        shape: 'pill',
+        text: 'signin_with', // Standard English text
+        width: 280
+      }
     );
   }
 
