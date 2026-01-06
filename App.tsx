@@ -10,7 +10,7 @@ import Profile from './components/Profile';
 import { MOCK_PROFESSIONALS } from './constants';
 import { Search, SlidersHorizontal, Sparkles, Shield, LogIn } from 'lucide-react';
 import { AuthService } from './services/authService';
-import { User } from './types';
+import { User, Role } from './types';
 
 const Marketplace: React.FC<{ user: User | null }> = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,7 +22,6 @@ const Marketplace: React.FC<{ user: User | null }> = ({ user }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Hero Section */}
       <div className="text-center mb-16 space-y-4">
         <div className="inline-flex items-center gap-2 bg-primary-600/10 text-primary-600 dark:text-primary-400 px-4 py-1.5 rounded-full border border-primary-600/20 mb-4 animate-in fade-in slide-in-from-top-4 duration-700">
           <Sparkles className="w-4 h-4" />
@@ -44,7 +43,6 @@ const Marketplace: React.FC<{ user: User | null }> = ({ user }) => {
         )}
       </div>
 
-      {/* Search & Filters */}
       <div className="flex flex-col md:flex-row gap-4 mb-12 sticky top-20 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
         <div className="flex-1 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -62,19 +60,11 @@ const Marketplace: React.FC<{ user: User | null }> = ({ user }) => {
         </button>
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredExperts.map(expert => (
           <ExpertCard key={expert.id} expert={expert} user={user} />
         ))}
       </div>
-      
-      {filteredExperts.length === 0 && (
-        <div className="text-center py-20 text-slate-500">
-          <p className="text-xl">No professionals found matching "{searchTerm}"</p>
-          <button onClick={() => setSearchTerm('')} className="text-primary-500 hover:underline mt-2">Clear search</button>
-        </div>
-      )}
     </div>
   );
 };
@@ -87,7 +77,6 @@ const App: React.FC = () => {
   );
 
   useEffect(() => {
-    // Wait for GSI to be available
     const interval = setInterval(() => {
       if ((window as any).google) {
         clearInterval(interval);
@@ -111,6 +100,11 @@ const App: React.FC = () => {
     window.location.reload();
   };
 
+  const handleRoleChange = (role: Role) => {
+    const updatedUser = AuthService.switchRole(role);
+    if (updatedUser) setUser({...updatedUser});
+  };
+
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
@@ -118,7 +112,13 @@ const App: React.FC = () => {
   return (
     <Router>
       <div className="min-h-screen flex flex-col transition-colors duration-300">
-        <Navbar user={user} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
+        <Navbar 
+          user={user} 
+          onLogout={handleLogout} 
+          theme={theme} 
+          onToggleTheme={toggleTheme} 
+          onRoleChange={handleRoleChange} 
+        />
         <main className="flex-1">
           <Routes>
             <Route path="/" element={<Marketplace user={user} />} />
@@ -128,7 +128,6 @@ const App: React.FC = () => {
           </Routes>
         </main>
         
-        {/* Floating AI Support */}
         <AIAssistant />
 
         <footer className="py-12 border-t border-slate-200 dark:border-slate-900 glass-dark">
@@ -136,11 +135,6 @@ const App: React.FC = () => {
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-primary-600" />
               <span className="font-black text-slate-900 dark:text-white">ProfessionalsBD</span>
-            </div>
-            <div className="text-sm text-slate-500 flex gap-8">
-              <a href="#" className="hover:text-primary-500 transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-primary-500 transition-colors">Terms of Service</a>
-              <a href="#" className="hover:text-primary-500 transition-colors">Contact</a>
             </div>
             <p className="text-xs text-slate-500">© 2024 ProfessionalsBD. Developed for the Bangladeshi expert market.</p>
           </div>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Shield, MessageSquare, List } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Shield, MessageSquare, Loader2, Sparkles } from 'lucide-react';
 import { GeminiService, decodeAudioData, decode } from '../services/geminiService';
 import { MOCK_PROFESSIONALS } from '../constants';
 import { LiveServerMessage } from '@google/genai';
@@ -10,6 +10,7 @@ const ConsultationRoom: React.FC = () => {
   const { expertId } = useParams();
   const navigate = useNavigate();
   const expert = MOCK_PROFESSIONALS.find(p => p.id === expertId);
+  const isGenericRoom = !expert;
   
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
@@ -23,8 +24,6 @@ const ConsultationRoom: React.FC = () => {
   const sessionRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!expert) return;
-
     const startSession = async () => {
       const gemini = new GeminiService();
       
@@ -36,16 +35,14 @@ const ConsultationRoom: React.FC = () => {
         const session = await gemini.connectLive({
           onOpen: () => setStatus('secure'),
           onMessage: async (message: LiveServerMessage) => {
-            // Handle Transcription
             if (message.serverContent?.outputTranscription) {
               const text = message.serverContent.outputTranscription.text;
-              setTranscriptions(prev => [...prev, { role: 'Expert (AI Support)', text }]);
+              setTranscriptions(prev => [...prev, { role: 'Expert Support', text }]);
             } else if (message.serverContent?.inputTranscription) {
               const text = message.serverContent.inputTranscription.text;
               setTranscriptions(prev => [...prev, { role: 'You', text }]);
             }
 
-            // Handle Audio Playback
             const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
             if (base64Audio && audioContextRef.current && outputNodeRef.current) {
               const ctx = audioContextRef.current;
@@ -87,56 +84,72 @@ const ConsultationRoom: React.FC = () => {
       if (sessionRef.current) sessionRef.current.close();
       if (audioContextRef.current) audioContextRef.current.close();
     };
-  }, [expert]);
-
-  if (!expert) return <div>Expert not found.</div>;
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col">
       {/* Header */}
       <div className="h-16 glass-dark border-b border-slate-800 px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600/20 p-2 rounded-lg">
-            <Shield className={`w-5 h-5 ${status === 'secure' ? 'text-green-400' : 'text-blue-400'}`} />
+          <div className="bg-primary-600/20 p-2 rounded-lg">
+            <Shield className={`w-5 h-5 ${status === 'secure' ? 'text-green-400' : 'text-primary-400'}`} />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white">Secure Consult: {expert.name}</h2>
+            <h2 className="text-sm font-bold text-white">
+              {expert ? `Secure Consult: ${expert.name}` : `Private Meeting: ${expertId}`}
+            </h2>
             <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-              {status === 'secure' ? '● End-to-End Encrypted' : 'Connecting...'}
+              {status === 'secure' ? '● End-to-End Encrypted' : 'Establishing Secure Tunnel...'}
             </p>
           </div>
         </div>
         <div className="hidden md:flex items-center gap-2 bg-slate-900 px-4 py-2 rounded-full border border-slate-800">
           <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live Transcript On</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Real-time Analysis Active</span>
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Video Area */}
         <div className="flex-1 relative p-6 bg-slate-950 flex flex-col gap-4">
+          {status === 'connecting' && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+              <Loader2 className="w-12 h-12 text-primary-500 animate-spin mb-4" />
+              <p className="text-white font-bold animate-pulse">Initializing Neural Link...</p>
+            </div>
+          )}
+
           <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Main Expert Video (Placeholder) */}
+            {/* Peer Video */}
             <div className="relative rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 shadow-2xl group">
-              <img 
-                src={expert.avatar} 
-                className="w-full h-full object-cover opacity-60 grayscale group-hover:grayscale-0 transition-all duration-700" 
-                alt="Expert"
-              />
+              {expert ? (
+                <img 
+                  src={expert.avatar} 
+                  className="w-full h-full object-cover opacity-60 grayscale group-hover:grayscale-0 transition-all duration-700" 
+                  alt="Expert"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center flex-col gap-4">
+                  <div className="w-20 h-20 rounded-full bg-primary-600/10 flex items-center justify-center border border-primary-500/20">
+                    <Sparkles className="w-10 h-10 text-primary-500" />
+                  </div>
+                  <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Waiting for participants</p>
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
               <div className="absolute bottom-6 left-6">
                 <span className="bg-slate-900/80 backdrop-blur px-3 py-1 rounded-lg border border-slate-700 text-xs font-bold text-white flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  {expert.name}
+                  <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                  {expert ? expert.name : 'Unknown Guest'}
                 </span>
               </div>
             </div>
 
-            {/* Self Video (Placeholder) */}
+            {/* Self Video */}
             <div className="relative rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 shadow-2xl">
               <div className="w-full h-full flex items-center justify-center text-slate-700">
                 {isVideoOn ? (
-                  <img src="https://picsum.photos/400/400?random=10" className="w-full h-full object-cover opacity-40" />
+                  <img src="https://picsum.photos/400/400?random=self" className="w-full h-full object-cover opacity-40" />
                 ) : (
                   <VideoOff className="w-12 h-12" />
                 )}
@@ -153,13 +166,13 @@ const ConsultationRoom: React.FC = () => {
           <div className="h-20 flex items-center justify-center gap-6">
             <button 
               onClick={() => setIsMicOn(!isMicOn)}
-              className={`p-4 rounded-full transition-all ${isMicOn ? 'bg-slate-800 text-white' : 'bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]'}`}
+              className={`p-4 rounded-full transition-all ${isMicOn ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]'}`}
             >
               {isMicOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
             </button>
             <button 
               onClick={() => setIsVideoOn(!isVideoOn)}
-              className={`p-4 rounded-full transition-all ${isVideoOn ? 'bg-slate-800 text-white' : 'bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]'}`}
+              className={`p-4 rounded-full transition-all ${isVideoOn ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]'}`}
             >
               {isVideoOn ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
             </button>
@@ -175,27 +188,26 @@ const ConsultationRoom: React.FC = () => {
         {/* Sidebar: Transcription */}
         <div className="w-80 glass-dark border-l border-slate-800 flex flex-col hidden lg:flex">
           <div className="p-4 border-b border-slate-800 flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-blue-400" />
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Live Dialogue</h3>
+            <MessageSquare className="w-4 h-4 text-primary-400" />
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Live AI Transcript</h3>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {transcriptions.length === 0 && (
               <div className="h-full flex items-center justify-center text-slate-600 text-xs text-center px-4 italic">
-                Awaiting conversation... 
-                Transcripts appear here automatically.
+                Awaiting audio input...<br/>Start speaking to generate transcripts.
               </div>
             )}
             {transcriptions.map((t, i) => (
-              <div key={i} className="space-y-1">
-                <p className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter">{t.role}</p>
-                <p className="text-sm text-slate-300 bg-slate-900/50 p-2 rounded-lg border border-slate-800/50">{t.text}</p>
+              <div key={i} className="space-y-1 group">
+                <p className="text-[10px] font-black text-primary-500 uppercase tracking-tighter">{t.role}</p>
+                <p className="text-sm text-slate-300 bg-slate-900/50 p-3 rounded-2xl border border-slate-800/50 group-hover:border-primary-500/30 transition-all">{t.text}</p>
               </div>
             ))}
           </div>
-          <div className="p-4 bg-blue-600/5 border-t border-slate-800">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Shield className="w-3 h-3 text-blue-400" />
-              This transcript is encrypted and private.
+          <div className="p-4 bg-primary-600/5 border-t border-slate-800">
+            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <Shield className="w-3 h-3 text-primary-400" />
+              Private & Encrypted
             </div>
           </div>
         </div>

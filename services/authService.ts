@@ -14,7 +14,6 @@ export class AuthService {
         callback: (response: any) => {
           const decoded: any = jwtDecode(response.credential);
           
-          // Mocking role assignment for demo purposes: 
           let role = Role.USER;
           if (decoded.email.includes('admin')) role = Role.ADMIN;
           else if (decoded.email.includes('pro')) role = Role.PROFESSIONAL;
@@ -32,17 +31,13 @@ export class AuthService {
           callback(user);
         },
         auto_select: false,
-        use_fedcm_for_prompt: false, // Disables the modern FedCM prompt causing NotAllowedError
+        use_fedcm_for_prompt: false,
         itp_support: true,
         context: 'signin'
       });
 
       if (!this.getSession()) {
-        (window as any).google.accounts.id.prompt((notification: any) => {
-          if (notification.isNotDisplayed()) {
-            console.log('One Tap prompt not displayed:', notification.getNotDisplayedReason());
-          }
-        });
+        (window as any).google.accounts.id.prompt();
       }
     } catch (err) {
       console.error('Failed to initialize Google Sign-In:', err);
@@ -64,6 +59,28 @@ export class AuthService {
         logo_alignment: 'left'
       }
     );
+  }
+
+  static switchRole(role: Role) {
+    let user = this.getSession();
+    
+    // If no session exists, create a mock one for testing
+    if (!user) {
+      user = {
+        id: 'mock-dev-id',
+        name: `Dev ${role.charAt(0) + role.slice(1).toLowerCase()}`,
+        email: `dev-${role.toLowerCase()}@example.com`,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${role}`,
+        role: role,
+        isVerified: true,
+        bio: `This is a mock account for ${role} role testing.`
+      };
+    } else {
+      user.role = role;
+    }
+    
+    this.saveSession(user);
+    return user;
   }
 
   static saveSession(user: User) {

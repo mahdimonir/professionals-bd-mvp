@@ -22,6 +22,7 @@ export interface User {
   role: Role;
   avatar?: string;
   isVerified: boolean;
+  isSuspended?: boolean;
   bio?: string;
   location?: string;
 }
@@ -36,20 +37,23 @@ export interface ProfessionalProfile {
   experience: number;
   languages: string[];
   isVerified: boolean;
+  isApproved?: boolean;
   bio: string;
   rating: number;
-  status?: AvailabilityStatus; // New optional field
+  status?: AvailabilityStatus;
 }
 
 export interface Booking {
   id: string;
   userId: string;
+  userName?: string;
   professionalId: string;
   startTime: string;
   endTime: string;
   status: BookingStatus;
   price: number;
   professionalName: string;
+  notes?: string;
 }
 
 export interface ChatMessage {
