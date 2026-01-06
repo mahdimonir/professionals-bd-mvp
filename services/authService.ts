@@ -15,11 +15,10 @@ export class AuthService {
         const decoded: any = jwtDecode(response.credential);
         
         // Mocking role assignment for demo purposes: 
-        // In a real app, this would be fetched from the DB based on email.
         let role = Role.USER;
         if (decoded.email.includes('admin')) role = Role.ADMIN;
-        if (decoded.email.includes('pro')) role = Role.PROFESSIONAL;
-        if (decoded.email.includes('mod')) role = Role.MODERATOR;
+        else if (decoded.email.includes('pro')) role = Role.PROFESSIONAL;
+        else if (decoded.email.includes('mod')) role = Role.MODERATOR;
 
         const user: User = {
           id: decoded.sub,
@@ -32,11 +31,15 @@ export class AuthService {
         this.saveSession(user);
         callback(user);
       },
-      auto_select: true,
-      itp_support: true // Helps with some cross-site tracking prevention issues
+      auto_select: false, // Set to false to prevent automatic FedCM triggers
+      use_fedcm_for_prompt: false, // CRITICAL: Disable FedCM to fix NotAllowedError
+      itp_support: true
     });
 
-    (window as any).google.accounts.id.prompt();
+    // Optional: Only prompt if not logged in
+    if (!this.getSession()) {
+      (window as any).google.accounts.id.prompt();
+    }
   }
 
   static renderButton(elementId: string) {
@@ -49,8 +52,9 @@ export class AuthService {
         theme: 'outline', 
         size: 'large', 
         shape: 'pill',
-        text: 'signin_with', // Standard English text
-        width: 280
+        text: 'signin_with', // English: "Sign in with Google"
+        width: 280,
+        logo_alignment: 'left'
       }
     );
   }
@@ -66,5 +70,8 @@ export class AuthService {
 
   static clearSession() {
     localStorage.removeItem(STORAGE_KEY);
+    if (typeof window !== 'undefined' && (window as any).google) {
+      (window as any).google.accounts.id.disableAutoSelect();
+    }
   }
 }

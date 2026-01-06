@@ -13,6 +13,8 @@ export enum BookingStatus {
   CANCELLED = 'CANCELLED'
 }
 
+export type AvailabilityStatus = 'Available Now' | 'Busy' | 'Offline';
+
 export interface User {
   id: string;
   name: string;
@@ -36,6 +38,7 @@ export interface ProfessionalProfile {
   isVerified: boolean;
   bio: string;
   rating: number;
+  status?: AvailabilityStatus; // New optional field
 }
 
 export interface Booking {

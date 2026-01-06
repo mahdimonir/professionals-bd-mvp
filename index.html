@@ -80,8 +80,9 @@
 </head>
 <body class="bg-slate-950 text-slate-100 dark">
   <div id="root"></div>
+  <script type="module" src="index.tsx"></script>
   <script>
-    // Initialize theme
+    // Initialize theme instantly to prevent flash of unstyled content
     const theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     document.body.className = theme === 'dark' ? 'bg-slate-950 text-slate-100 dark' : 'bg-white text-slate-900 light';
   </script>

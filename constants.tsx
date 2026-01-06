@@ -14,7 +14,8 @@ export const MOCK_PROFESSIONALS: ProfessionalProfile[] = [
     languages: ['Bengali', 'English'],
     isVerified: true,
     bio: 'Senior consultant specializing in Bangladeshi corporate regulations and international trade laws.',
-    rating: 4.9
+    rating: 4.9,
+    status: 'Available Now'
   },
   {
     id: 'p2',
@@ -27,7 +28,8 @@ export const MOCK_PROFESSIONALS: ProfessionalProfile[] = [
     languages: ['Bengali', 'English'],
     isVerified: true,
     bio: 'Expert chartered accountant with a focus on startup taxation and financial compliance.',
-    rating: 4.8
+    rating: 4.8,
+    status: 'Busy'
   },
   {
     id: 'p3',
@@ -40,7 +42,8 @@ export const MOCK_PROFESSIONALS: ProfessionalProfile[] = [
     languages: ['Bengali', 'English', 'Hindi'],
     isVerified: true,
     bio: 'Compassionate psychologist dedicated to mental well-being and family counseling.',
-    rating: 5.0
+    rating: 5.0,
+    status: 'Offline'
   }
 ];
 
