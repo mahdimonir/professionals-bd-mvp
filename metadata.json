@@ -1,0 +1,8 @@
+{
+  "name": "ProfessionalsBD",
+  "description": "Premium expert network platform for the Bangladeshi market featuring AI-powered live consultations and professional matchmaking.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
