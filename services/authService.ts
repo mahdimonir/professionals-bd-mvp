@@ -1,4 +1,3 @@
-
 import { jwtDecode } from 'jwt-decode';
 import { User, Role } from '../types';
 
@@ -9,36 +8,44 @@ export class AuthService {
   static initGoogleSignIn(callback: (user: User) => void) {
     if (typeof window === 'undefined' || !(window as any).google) return;
 
-    (window as any).google.accounts.id.initialize({
-      client_id: CLIENT_ID,
-      callback: (response: any) => {
-        const decoded: any = jwtDecode(response.credential);
-        
-        // Mocking role assignment for demo purposes: 
-        let role = Role.USER;
-        if (decoded.email.includes('admin')) role = Role.ADMIN;
-        else if (decoded.email.includes('pro')) role = Role.PROFESSIONAL;
-        else if (decoded.email.includes('mod')) role = Role.MODERATOR;
+    try {
+      (window as any).google.accounts.id.initialize({
+        client_id: CLIENT_ID,
+        callback: (response: any) => {
+          const decoded: any = jwtDecode(response.credential);
+          
+          // Mocking role assignment for demo purposes: 
+          let role = Role.USER;
+          if (decoded.email.includes('admin')) role = Role.ADMIN;
+          else if (decoded.email.includes('pro')) role = Role.PROFESSIONAL;
+          else if (decoded.email.includes('mod')) role = Role.MODERATOR;
 
-        const user: User = {
-          id: decoded.sub,
-          name: decoded.name,
-          email: decoded.email,
-          avatar: decoded.picture,
-          role: role,
-          isVerified: decoded.email_verified
-        };
-        this.saveSession(user);
-        callback(user);
-      },
-      auto_select: false, // Set to false to prevent automatic FedCM triggers
-      use_fedcm_for_prompt: false, // CRITICAL: Disable FedCM to fix NotAllowedError
-      itp_support: true
-    });
+          const user: User = {
+            id: decoded.sub,
+            name: decoded.name,
+            email: decoded.email,
+            avatar: decoded.picture,
+            role: role,
+            isVerified: decoded.email_verified
+          };
+          this.saveSession(user);
+          callback(user);
+        },
+        auto_select: false,
+        use_fedcm_for_prompt: false, // Disables the modern FedCM prompt causing NotAllowedError
+        itp_support: true,
+        context: 'signin'
+      });
 
-    // Optional: Only prompt if not logged in
-    if (!this.getSession()) {
-      (window as any).google.accounts.id.prompt();
+      if (!this.getSession()) {
+        (window as any).google.accounts.id.prompt((notification: any) => {
+          if (notification.isNotDisplayed()) {
+            console.log('One Tap prompt not displayed:', notification.getNotDisplayedReason());
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to initialize Google Sign-In:', err);
     }
   }
 
@@ -52,7 +59,7 @@ export class AuthService {
         theme: 'outline', 
         size: 'large', 
         shape: 'pill',
-        text: 'signin_with', // English: "Sign in with Google"
+        text: 'signin_with',
         width: 280,
         logo_alignment: 'left'
       }
