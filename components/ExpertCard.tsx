@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { ProfessionalProfile, User, AvailabilityStatus } from '../types';
+import { ProfessionalProfile, User, AvailabilityStatus, Booking } from '../types';
 import { Star, CheckCircle, Clock, ArrowRight, Loader2, Circle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ApiService } from '../services/apiService';
 
 interface Props {
   expert: ProfessionalProfile;
@@ -21,29 +22,22 @@ const ExpertCard: React.FC<Props> = ({ expert, user }) => {
 
     setIsBooking(true);
     try {
-      // Create a mock booking window (1 hour from now)
       const startTime = new Date(Date.now() + 3600000).toISOString();
       const endTime = new Date(Date.now() + 7200000).toISOString();
 
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          professionalId: expert.id,
-          startTime,
-          endTime,
-          price: expert.rates
-        })
+      const response = await ApiService.post<Booking>('/bookings/', {
+        professionalId: expert.id,
+        startTime,
+        endTime,
+        notes: 'Consultation from marketplace'
       });
 
-      if (!response.ok) throw new Error('Booking failed');
-
-      // Success - Proceed to consultation room
-      navigate(`/consultation/${expert.id}`);
-    } catch (error) {
+      if (response.success) {
+        navigate(`/consultation/${expert.id}`);
+      }
+    } catch (error: any) {
       console.error(error);
-      alert("Something went wrong with your booking. Please try again.");
+      alert(error.message || "Booking failed.");
     } finally {
       setIsBooking(false);
     }
@@ -112,9 +106,6 @@ const ExpertCard: React.FC<Props> = ({ expert, user }) => {
               {s}
             </span>
           ))}
-          {expert.specialties.length > 3 && (
-            <span className="text-[10px] font-bold text-primary-500 py-1">+{expert.specialties.length - 3} more</span>
-          )}
         </div>
 
         <div className="space-y-4 pt-5 border-t border-slate-100 dark:border-slate-800">
@@ -122,7 +113,7 @@ const ExpertCard: React.FC<Props> = ({ expert, user }) => {
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                 <Clock className="w-4 h-4 text-primary-500" />
-                <span className="text-xs font-bold">{expert.experience} Yrs+ Experience</span>
+                <span className="text-xs font-bold">{expert.experience} Yrs Exp.</span>
               </div>
               <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                 <Circle className="w-1.5 h-1.5 fill-slate-300 dark:fill-slate-700 ml-1.5" />
@@ -130,7 +121,7 @@ const ExpertCard: React.FC<Props> = ({ expert, user }) => {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-widest mb-0.5">Rate per Hour</p>
+              <p className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-widest mb-0.5">Rate</p>
               <p className="text-xl font-black text-primary-600 dark:text-primary-400">৳{expert.rates.toLocaleString()}</p>
             </div>
           </div>
@@ -143,11 +134,11 @@ const ExpertCard: React.FC<Props> = ({ expert, user }) => {
             {isBooking ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Processing Booking...
+                Booking...
               </>
             ) : (
               <>
-                Book Instant Consultation
+                Book Consultation
                 <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
               </>
             )}

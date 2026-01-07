@@ -1,17 +1,31 @@
 
-import React, { useMemo } from 'react';
-import { User, Role, BookingStatus } from '../types';
-import { Shield, Mail, MapPin, Calendar, Edit3, Camera, History, ExternalLink, Clock, Star, MessageCircle } from 'lucide-react';
-import { MOCK_BOOKINGS } from '../constants';
+import React, { useMemo, useEffect, useState } from 'react';
+import { User, Role, BookingStatus, Booking } from '../types';
+import { Shield, Mail, MapPin, Calendar, Edit3, Camera, History, ExternalLink, Clock, Star, MessageCircle, Loader2 } from 'lucide-react';
+import { ApiService } from '../services/apiService';
 
 interface ProfileProps {
   user: User | null;
 }
 
 const Profile: React.FC<ProfileProps> = ({ user }) => {
-  const userBookings = useMemo(() => {
-    if (!user) return [];
-    return MOCK_BOOKINGS.filter(b => b.userId === user.id);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!user) return;
+      setIsLoading(true);
+      try {
+        const response = await ApiService.get<Booking[]>('/bookings/my');
+        if (response.success) setBookings(response.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchHistory();
   }, [user]);
 
   if (!user) {
@@ -40,14 +54,12 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 space-y-8">
       <div className="glass rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl">
-        {/* Banner */}
         <div className="h-48 bg-gradient-to-r from-primary-600 to-indigo-600 relative">
           <button className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-2 rounded-full backdrop-blur-md text-white transition-all">
             <Camera className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Profile Info */}
         <div className="px-8 pb-12 relative">
           <div className="flex flex-col md:flex-row items-end gap-6 -mt-16 mb-8">
             <div className="relative">
@@ -66,7 +78,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                   {user.role}
                 </span>
               </div>
-              <p className="text-slate-500 dark:text-slate-400 font-medium">{user.bio || 'Bangladeshi Professional'}</p>
+              <p className="text-slate-500 dark:text-slate-400 font-medium">{user.bio || 'Verified Member'}</p>
             </div>
 
             <button className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-primary-600/20">
@@ -78,7 +90,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
               <section>
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Contact Information</h3>
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Contact</h3>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
                     <Mail className="w-4 h-4 text-primary-500" />
@@ -86,41 +98,15 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                   </div>
                   <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
                     <MapPin className="w-4 h-4 text-primary-500" />
-                    <span className="text-sm">{user.location || 'Dhaka, Bangladesh'}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
-                    <Calendar className="w-4 h-4 text-primary-500" />
-                    <span className="text-sm">Joined March 2024</span>
+                    <span className="text-sm">{user.location || 'Bangladesh'}</span>
                   </div>
                 </div>
               </section>
-
-              <section>
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">About</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Dedicated {user.role.toLowerCase()} on ProfessionalsBD platform. Committed to high-quality standards and professional growth within the expert network.
-                </p>
-              </section>
-            </div>
-
-            <div className="glass p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Account Stats</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <p className="text-2xl font-black text-primary-600 dark:text-primary-400">{userBookings.length}</p>
-                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total Bookings</p>
-                </div>
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <p className="text-2xl font-black text-green-600 dark:text-green-400">4.8</p>
-                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Avg Rating</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Booking History & Reviews Section */}
       <div className="glass rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-xl">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
@@ -129,50 +115,43 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
             </div>
             <div>
               <h2 className="text-xl font-black text-slate-900 dark:text-white">Past Bookings & Reviews</h2>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Feedback and session logs</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Transaction logs</p>
             </div>
           </div>
-          <button className="text-primary-600 text-xs font-black uppercase tracking-widest hover:underline flex items-center gap-1">
-            Export Records <ExternalLink className="w-3 h-3" />
-          </button>
         </div>
 
-        <div className="overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Expert</th>
-                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date & Session</th>
-                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Review</th>
-                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Fee</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {userBookings.length > 0 ? (
-                userBookings.map((booking) => (
-                  <React.Fragment key={booking.id}>
-                    <tr className="group hover:bg-slate-50 dark:hover:bg-primary-900/5 transition-colors">
+        {isLoading ? (
+          <div className="py-20 flex flex-col items-center gap-4">
+            <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading History...</p>
+          </div>
+        ) : (
+          <div className="overflow-hidden">
+            <table className="w-full text-left">
+              <thead className="border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Expert</th>
+                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Review</th>
+                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Fee</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {bookings.length > 0 ? (
+                  bookings.map((booking) => (
+                    <tr key={booking.id} className="group hover:bg-slate-50 dark:hover:bg-primary-900/5 transition-colors">
                       <td className="py-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-[10px] text-primary-600 border border-slate-200 dark:border-slate-700">
-                            {booking.professionalName.charAt(0)}
-                          </div>
                           <span className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-primary-600 transition-colors">
                             {booking.professionalName}
                           </span>
                         </div>
                       </td>
                       <td className="py-5">
-                        <div className="flex flex-col">
-                          <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">
-                            {new Date(booking.startTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </span>
-                          <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold uppercase">
-                            <Clock className="w-3 h-3" />
-                            {new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </div>
+                        <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">
+                          {new Date(booking.startTime).toLocaleDateString()}
+                        </span>
                       </td>
                       <td className="py-5 text-center">
                         {renderStatusBadge(booking.status)}
@@ -183,10 +162,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                             <Star className="w-3.5 h-3.5 fill-amber-500" />
                             <span className="text-xs font-black">{booking.review.rating}</span>
                           </div>
-                        ) : booking.status === BookingStatus.COMPLETED ? (
-                          <button className="text-[10px] font-black text-primary-600 uppercase tracking-widest flex items-center gap-1 hover:underline">
-                            <MessageCircle className="w-3 h-3" /> Rate Now
-                          </button>
                         ) : (
                           <span className="text-[10px] text-slate-400 font-bold uppercase">—</span>
                         )}
@@ -195,34 +170,18 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                         <span className="text-sm font-black text-slate-900 dark:text-white">৳{booking.price.toLocaleString()}</span>
                       </td>
                     </tr>
-                    {booking.review && (
-                      <tr className="bg-slate-50/50 dark:bg-slate-900/20">
-                        <td colSpan={5} className="px-6 py-4">
-                          <div className="flex gap-4 items-start pl-8 border-l-2 border-primary-500/20">
-                            <div className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                              <p className="text-xs text-slate-600 dark:text-slate-400 italic">
-                                "{booking.review.comment}"
-                              </p>
-                              <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-widest">
-                                Left on {new Date(booking.review.createdAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="py-20 text-center text-slate-500 font-medium italic text-sm">
-                    No booking history found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="py-20 text-center text-slate-500 italic text-sm">
+                      No booking history found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -21,10 +21,23 @@ export interface User {
   email: string;
   role: Role;
   avatar?: string;
+  phone?: string;
   isVerified: boolean;
   isSuspended?: boolean;
   bio?: string;
   location?: string;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: User;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message: string;
 }
 
 export interface Review {
@@ -39,6 +52,7 @@ export interface ProfessionalProfile {
   userId: string;
   name: string;
   avatar: string;
+  category: 'Legal' | 'Financial' | 'Medical' | 'Tech';
   specialties: string[];
   rates: number;
   experience: number;
