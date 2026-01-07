@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard';
 import ConsultationRoom from './components/ConsultationRoom';
 import AIAssistant from './components/AIAssistant';
 import Profile from './components/Profile';
+import Auth from './components/Auth';
 import { MOCK_PROFESSIONALS } from './constants';
 import { Search, SlidersHorizontal, Sparkles, Shield, Loader2, Check } from 'lucide-react';
 import { AuthService } from './services/authService';
@@ -51,6 +52,7 @@ const Marketplace: React.FC<{
 }> = ({ user, searchTerm, setSearchTerm, isScrolled }) => {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const navigate = useNavigate();
 
   const categories = ['Legal', 'Financial', 'Medical', 'Tech'];
 
@@ -78,17 +80,15 @@ const Marketplace: React.FC<{
         {!user && (
           <div className="pt-8 flex flex-col items-center gap-4">
             <button 
-              onClick={() => AuthService.loginWithGoogle()}
+              onClick={() => navigate('/login')}
               className="flex items-center gap-3 bg-white text-slate-900 border border-slate-200 px-8 py-3.5 rounded-full font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all shadow-xl hover:shadow-primary-500/10 active:scale-95"
             >
-              <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
-              Sign in with Google
+              Get Started
             </button>
           </div>
         )}
       </div>
 
-      {/* Hero-level Search & Filter Bar (Only visible when NOT scrolled) */}
       <div className={`transition-all duration-500 ${isScrolled ? 'opacity-0 scale-95 pointer-events-none h-0 mb-0' : 'opacity-100 scale-100 mb-12'}`}>
         <div className="flex flex-col md:flex-row gap-4 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
           <div className="flex-1 relative">
@@ -172,7 +172,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      // Transition point for the docked search bar
       setIsScrolled(window.scrollY > 200);
     };
     window.addEventListener('scroll', handleScroll);
@@ -214,6 +213,8 @@ const App: React.FC = () => {
         <main className="flex-1">
           <Routes>
             <Route path="/" element={<Marketplace user={user} searchTerm={searchTerm} setSearchTerm={setSearchTerm} isScrolled={isScrolled} />} />
+            <Route path="/login" element={<Auth mode="login" />} />
+            <Route path="/register" element={<Auth mode="register" />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/dashboard" element={<Dashboard user={user} />} />
             <Route path="/profile" element={<Profile user={user} />} />

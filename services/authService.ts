@@ -7,9 +7,29 @@ const STORAGE_ACCESS_TOKEN = 'probd_access_token';
 const STORAGE_REFRESH_TOKEN = 'probd_refresh_token';
 
 export class AuthService {
-  static async loginWithGoogle() {
-    // Redirect flow handled by the backend
-    window.location.href = 'https://server.professionalsbd.vercel.app/api/v1/auth/google';
+  static loginWithGoogle() {
+    const baseUrl = ApiService.getBaseUrl();
+    window.location.href = `${baseUrl}/auth/google`;
+  }
+
+  static async register(data: any) {
+    return ApiService.post<any>('/auth/register', data);
+  }
+
+  static async verifyOtp(email: string, otp: string) {
+    const response = await ApiService.post<AuthResponse>('/auth/register/verify', { email, otp });
+    if (response.success) {
+      this.saveSession(response.data);
+    }
+    return response;
+  }
+
+  static async login(data: any) {
+    const response = await ApiService.post<AuthResponse>('/auth/login', data);
+    if (response.success) {
+      this.saveSession(response.data);
+    }
+    return response;
   }
 
   static saveSession(authData: AuthResponse) {
@@ -23,10 +43,6 @@ export class AuthService {
     return data ? JSON.parse(data) : null;
   }
 
-  static getAccessToken(): string | null {
-    return localStorage.getItem(STORAGE_ACCESS_TOKEN);
-  }
-
   static clearSession() {
     localStorage.removeItem(STORAGE_USER_KEY);
     localStorage.removeItem(STORAGE_ACCESS_TOKEN);
@@ -36,9 +52,6 @@ export class AuthService {
   static async switchRole(role: Role): Promise<User> {
     const user = this.getSession();
     if (!user) throw new Error('No session');
-    
-    // In a real app, this would be a PATCH to /users/me/profile
-    // For this prototype, we simulate it
     const updatedUser = { ...user, role };
     localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(updatedUser));
     return updatedUser;

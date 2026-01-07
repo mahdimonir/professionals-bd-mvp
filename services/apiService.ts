@@ -1,9 +1,13 @@
 
 import { ApiResponse } from '../types';
 
-const BASE_URL = process.env.BACKEND_URL || 'https://server.professionalsbd.vercel.app/api/v1';
+const BASE_URL = process.env.BACKEND_URL || 'https://serverprofessionalsbd.vercel.app/api/v1';
 
 export class ApiService {
+  static getBaseUrl() {
+    return BASE_URL;
+  }
+
   private static getHeaders() {
     const token = localStorage.getItem('probd_access_token');
     return {
@@ -18,11 +22,6 @@ export class ApiService {
     
     const response = await fetch(url, { ...options, headers });
     
-    if (response.status === 401) {
-      // Logic for token refresh could go here
-      console.warn('Unauthorized request');
-    }
-
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.message || 'API request failed');
