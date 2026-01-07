@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Shield, MessageSquare, Loader2, Sparkles } from 'lucide-react';
 import { GeminiService, decodeAudioData, decode } from '../services/geminiService';
 import { MOCK_PROFESSIONALS } from '../constants';
@@ -8,9 +8,10 @@ import { LiveServerMessage } from '@google/genai';
 
 const ConsultationRoom: React.FC = () => {
   const { expertId } = useParams();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
   const navigate = useNavigate();
   const expert = MOCK_PROFESSIONALS.find(p => p.id === expertId);
-  const isGenericRoom = !expert;
   
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
@@ -100,6 +101,7 @@ const ConsultationRoom: React.FC = () => {
             </h2>
             <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
               {status === 'secure' ? '● End-to-End Encrypted' : 'Establishing Secure Tunnel...'}
+              {token && <span className="ml-2 text-primary-500">● Auth Active</span>}
             </p>
           </div>
         </div>

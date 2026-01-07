@@ -62,16 +62,25 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const handleCreateRoom = async () => {
     setIsCreatingRoom(true);
     try {
-      // Changed endpoint to /meetings/adhoc as per user request
+      // 1. Create ad-hoc meeting
       const res = await ApiService.post<any>('/meetings/adhoc', { 
         title: `Adhoc Meeting - ${user?.name}`,
         description: 'Moderated/Admin adhoc consultation room'
       });
+      
       if (res.success) {
-        alert("Meeting Room Created Successfully!");
-        // If the API returns a meeting ID or URL, we could navigate there
-        if (res.data?.id) {
-            navigate(`/consultation/${res.data.id}`);
+        const callId = res.data.callId || res.data.id;
+
+        // 2. Get join token for current user
+        const tokenRes = await ApiService.get<any>(`/meetings/adhoc/${callId}/token`);
+        
+        if (tokenRes.success) {
+          const token = tokenRes.data.token;
+          // 3. Join the call (Navigate to Consultation Room with token)
+          navigate(`/consultation/${callId}?token=${token}`);
+        } else {
+          // Fallback if token fails but room was created
+          navigate(`/consultation/${callId}`);
         }
       }
     } catch (err: any) {
