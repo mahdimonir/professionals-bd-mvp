@@ -1,8 +1,11 @@
 
 import { ApiResponse } from '../types';
 
-// Use the environment variable if available, otherwise fall back to the new production URL provided by the user.
-const BASE_URL = process.env.BACKEND_URL || 'https://serverprofessionalsbd.vercel.app/api/v1';
+// Detect environment and set base URL
+const BASE_URL = 
+  (import.meta as any).env?.VITE_BACKEND_URL || 
+  (process.env as any).BACKEND_URL || 
+  'https://serverprofessionalsbd.vercel.app/api/v1';
 
 export class ApiService {
   static getBaseUrl() {
@@ -21,14 +24,19 @@ export class ApiService {
     const url = `${BASE_URL}${endpoint}`;
     const headers = { ...this.getHeaders(), ...options.headers };
     
-    const response = await fetch(url, { ...options, headers });
-    
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'API request failed');
+    try {
+      const response = await fetch(url, { ...options, headers });
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || `API Error: ${response.status}`);
+      }
+      
+      return data as ApiResponse<T>;
+    } catch (err: any) {
+      console.error(`API Request Failed [${endpoint}]:`, err);
+      throw err;
     }
-    
-    return data as ApiResponse<T>;
   }
 
   static async get<T>(endpoint: string) {
