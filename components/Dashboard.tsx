@@ -62,15 +62,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const handleCreateRoom = async () => {
     setIsCreatingRoom(true);
     try {
-      // Endpoint specified in API guide: POST /meetings/ with { bookingId }
-      // For manual room creation by admin, we might pass a dummy or specific ID
-      const res = await ApiService.post<any>('/meetings/', { bookingId: `admin-room-${Date.now()}` });
+      // Changed endpoint to /meetings/adhoc as per user request
+      const res = await ApiService.post<any>('/meetings/adhoc', { 
+        title: `Adhoc Meeting - ${user?.name}`,
+        description: 'Moderated/Admin adhoc consultation room'
+      });
       if (res.success) {
         alert("Meeting Room Created Successfully!");
-        // Logic to redirect or show details
+        // If the API returns a meeting ID or URL, we could navigate there
+        if (res.data?.id) {
+            navigate(`/consultation/${res.data.id}`);
+        }
       }
     } catch (err: any) {
-      alert(err.message || "Failed to create meeting room.");
+      alert(err.message || "Failed to create adhoc meeting room.");
     } finally {
       setIsCreatingRoom(false);
     }
@@ -97,20 +102,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     );
   };
 
-  const renderAdminView = () => (
+  const renderManagementView = () => (
     <div className="space-y-12">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Admin Control Center</h1>
-          <p className="text-slate-500 font-medium">Manage platform meetings and user safety.</p>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white">
+            {user.role === Role.ADMIN ? 'Platform Administration' : 'Moderator Dashboard'}
+          </h1>
+          <p className="text-slate-500 font-medium">Platform oversight and incident management.</p>
         </div>
         <button 
           onClick={handleCreateRoom}
           disabled={isCreatingRoom}
-          className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl shadow-primary-600/20"
+          className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl shadow-primary-600/20 active:scale-95 disabled:opacity-50"
         >
           {isCreatingRoom ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          Generate Live Room
+          Generate Adhoc Room
         </button>
       </div>
 
@@ -118,8 +125,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         {[
           { label: 'Total Experts', value: '14', icon: BadgeCheck, color: 'text-primary-500' },
           { label: 'Active Meetings', value: '3', icon: Video, color: 'text-green-500' },
-          { label: 'Pending Verifications', value: '0', icon: ShieldAlert, color: 'text-amber-500' },
-          { label: 'Weekly Revenue', value: '৳84,200', icon: DollarSign, color: 'text-indigo-500' },
+          { label: 'Security Alerts', value: '0', icon: ShieldAlert, color: 'text-amber-500' },
+          { label: 'Revenue (M-T-D)', value: '৳142,500', icon: DollarSign, color: 'text-indigo-500' },
         ].map((stat, i) => (
           <div key={i} className="glass p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between mb-2">
@@ -130,6 +137,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
           </div>
         ))}
+      </div>
+      
+      {/* Management Content */}
+      <div className="glass p-8 rounded-3xl border border-slate-200 dark:border-slate-800">
+          <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6">Recent Activity</h2>
+          <div className="text-center py-12 text-slate-500 italic">
+              All platform systems are operational. No pending moderation actions.
+          </div>
       </div>
     </div>
   );
@@ -176,6 +191,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 </div>
               </div>
             ))}
+          
+          {bookings.filter(b => activeTab === 'active' ? b.status !== BookingStatus.COMPLETED && b.status !== BookingStatus.CANCELLED : b.status === BookingStatus.COMPLETED || b.status === BookingStatus.CANCELLED).length === 0 && (
+              <div className="py-12 text-center text-slate-500">
+                  No sessions found in this category.
+              </div>
+          )}
         </div>
       )}
     </div>
@@ -183,7 +204,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      {user.role === Role.ADMIN ? renderAdminView() : renderUserView()}
+      {(user.role === Role.ADMIN || user.role === Role.MODERATOR) ? renderManagementView() : renderUserView()}
     </div>
   );
 };

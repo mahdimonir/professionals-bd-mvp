@@ -1,6 +1,7 @@
 
 import { ApiResponse } from '../types';
 
+// Use the environment variable if available, otherwise fall back to the new production URL provided by the user.
 const BASE_URL = process.env.BACKEND_URL || 'https://serverprofessionalsbd.vercel.app/api/v1';
 
 export class ApiService {
