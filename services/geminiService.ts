@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, LiveServerMessage, Modality, Blob, Type } from '@google/genai';
 
 export class GeminiService {
@@ -70,9 +71,10 @@ export class GeminiService {
     onError: (e: any) => void,
     onClose: () => void
   }) {
+    // CRITICAL: Updated model name to 12-2025 as per latest guidelines
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     return ai.live.connect({
-      model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+      model: 'gemini-2.5-flash-native-audio-preview-12-2025',
       callbacks: {
         onopen: callbacks.onOpen,
         onmessage: callbacks.onMessage,

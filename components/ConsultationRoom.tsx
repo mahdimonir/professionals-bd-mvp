@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Shield, MessageSquare, Loader2, Sparkles, CheckCircle2, PhoneOff } from 'lucide-react';
+import { Shield, MessageSquare, Loader2, Sparkles, CheckCircle2, PhoneOff, AlertTriangle } from 'lucide-react';
 import { GeminiService, decodeAudioData, decode } from '../services/geminiService';
 import { MOCK_PROFESSIONALS } from '../constants';
 import { LiveServerMessage } from '@google/genai';
@@ -11,8 +11,7 @@ import {
   StreamCall, 
   StreamTheme, 
   SpeakerLayout, 
-  CallControls,
-  useCallStateHooks
+  CallControls
 } from '@stream-io/video-react-sdk';
 import { AuthService } from '../services/authService';
 
@@ -25,6 +24,7 @@ const ConsultationRoom: React.FC = () => {
   const expert = MOCK_PROFESSIONALS.find(p => p.id === expertId);
   
   const [status, setStatus] = useState<'connecting' | 'secure' | 'joining_stream' | 'error' | 'ended'>('connecting');
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const [transcriptions, setTranscriptions] = useState<{ role: string, text: string }[]>([]);
   
   const [videoClient, setVideoClient] = useState<StreamVideoClient | null>(null);
@@ -38,8 +38,10 @@ const ConsultationRoom: React.FC = () => {
 
   useEffect(() => {
     const initializeCall = async () => {
+      console.log("Initializing Session...", { expertId, hasToken: !!token });
+      
       if (!token || !expertId || !currentUser) {
-        // If no token, we can still try to connect to Gemini but might lack Stream video
+        console.warn("Missing required parameters for Stream Session");
         if (!token) setStatus('secure');
         return;
       }
@@ -48,63 +50,72 @@ const ConsultationRoom: React.FC = () => {
 
       try {
         // 1. Initialize Gemini Live API (Background Transcription)
-        const gemini = new GeminiService();
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        outputNodeRef.current = audioContextRef.current.createGain();
-        outputNodeRef.current.connect(audioContextRef.current.destination);
+        try {
+          const gemini = new GeminiService();
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+          outputNodeRef.current = audioContextRef.current.createGain();
+          outputNodeRef.current.connect(audioContextRef.current.destination);
 
-        const session = await gemini.connectLive({
-          onOpen: () => console.log("Gemini Link Active"),
-          onMessage: async (message: LiveServerMessage) => {
-            if (message.serverContent?.outputTranscription) {
-              const text = message.serverContent.outputTranscription.text;
-              setTranscriptions(prev => [...prev, { role: 'Assistant/Expert', text }]);
-            } else if (message.serverContent?.inputTranscription) {
-              const text = message.serverContent.inputTranscription.text;
-              setTranscriptions(prev => [...prev, { role: 'You', text }]);
-            }
+          const session = await gemini.connectLive({
+            onOpen: () => console.log("Gemini Live Connected"),
+            onMessage: async (message: LiveServerMessage) => {
+              if (message.serverContent?.outputTranscription) {
+                const text = message.serverContent.outputTranscription.text;
+                setTranscriptions(prev => [...prev, { role: 'Assistant/Expert', text }]);
+              } else if (message.serverContent?.inputTranscription) {
+                const text = message.serverContent.inputTranscription.text;
+                setTranscriptions(prev => [...prev, { role: 'You', text }]);
+              }
 
-            const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
-            if (base64Audio && audioContextRef.current && outputNodeRef.current) {
-              const ctx = audioContextRef.current;
-              nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
-              const buffer = await decodeAudioData(decode(base64Audio), ctx, 24000, 1);
-              const source = ctx.createBufferSource();
-              source.buffer = buffer;
-              source.connect(outputNodeRef.current);
-              source.addEventListener('ended', () => sourcesRef.current.delete(source));
-              source.start(nextStartTimeRef.current);
-              nextStartTimeRef.current += buffer.duration;
-              sourcesRef.current.add(source);
-            }
-          },
-          onError: (e) => console.error("Gemini Error:", e),
-          onClose: () => console.log("Gemini Closed")
-        });
-        geminiSessionRef.current = session;
+              const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+              if (base64Audio && audioContextRef.current && outputNodeRef.current) {
+                const ctx = audioContextRef.current;
+                nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
+                const buffer = await decodeAudioData(decode(base64Audio), ctx, 24000, 1);
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(outputNodeRef.current);
+                source.addEventListener('ended', () => sourcesRef.current.delete(source));
+                source.start(nextStartTimeRef.current);
+                nextStartTimeRef.current += buffer.duration;
+                sourcesRef.current.add(source);
+              }
+            },
+            onError: (e) => console.error("Gemini Live Error:", e),
+            onClose: () => console.log("Gemini Live Closed")
+          });
+          geminiSessionRef.current = session;
+        } catch (geminiErr) {
+          console.error("Gemini failed, continuing with Video only:", geminiErr);
+        }
 
         // 2. Initialize Stream Video
-        const apiKey = "your_stream_api_key"; // Note: This should match your backend's API key
+        // Fallback chain for API Key
+        const apiKey = (process as any).env?.STREAM_API_KEY || (process as any).env?.VITE_STREAM_API_KEY || "your_stream_api_key";
+        
+        console.log("Creating Stream Client with ID:", currentUser.id);
         const client = new StreamVideoClient({
           apiKey,
           user: { 
             id: currentUser.id, 
-            name: currentUser.name, 
+            name: currentUser.name || "Anonymous", 
             image: currentUser.avatar 
           },
           token,
         });
 
         const call = client.call("default", expertId);
+        console.log("Attempting to join call:", expertId);
         
-        // CRITICAL: Must await call.join() to move past loading
         await call.join({ create: true });
         
+        console.log("Call joined successfully");
         setVideoClient(client);
         setActiveCall(call);
         setStatus('secure');
-      } catch (err) {
-        console.error("Initialization Error:", err);
+      } catch (err: any) {
+        console.error("Stream/Session Initialization Final Error:", err);
+        setErrorMessage(err.message || "Unknown connection error");
         setStatus('error');
       }
     };
@@ -112,6 +123,7 @@ const ConsultationRoom: React.FC = () => {
     initializeCall();
 
     return () => {
+      console.log("Cleaning up session...");
       if (geminiSessionRef.current) geminiSessionRef.current.close();
       if (audioContextRef.current) audioContextRef.current.close();
       if (activeCall) activeCall.leave();
@@ -120,13 +132,33 @@ const ConsultationRoom: React.FC = () => {
 
   if (status === 'error') {
     return (
-      <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
-        <div className="bg-red-500/10 p-4 rounded-full mb-6">
-          <PhoneOff className="w-12 h-12 text-red-500" />
+      <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 text-center z-[200]">
+        <div className="bg-red-500/10 p-6 rounded-full mb-8 ring-1 ring-red-500/20">
+          <AlertTriangle className="w-12 h-12 text-red-500" />
         </div>
-        <h2 className="text-2xl font-black text-white mb-2">Connection Failed</h2>
-        <p className="text-slate-400 max-w-sm mb-8">We couldn't establish a secure neural link. The token may have expired or the network is restricted.</p>
-        <button onClick={() => navigate('/dashboard')} className="bg-primary-600 text-white px-8 py-3 rounded-2xl font-bold uppercase tracking-widest text-xs">Return to Dashboard</button>
+        <h2 className="text-3xl font-black text-white mb-4">Neural Link Severed</h2>
+        <div className="bg-slate-900/50 p-6 rounded-3xl border border-white/5 mb-10 max-w-md">
+          <p className="text-slate-400 text-sm leading-relaxed mb-4">
+            We couldn't establish a secure connection. This usually happens due to an invalid API key, an expired token, or a restrictive network firewall.
+          </p>
+          <div className="text-[10px] font-mono text-red-400 uppercase tracking-widest bg-red-500/5 p-2 rounded-lg border border-red-500/10">
+            Error: {errorMessage || 'Access Denied / Network Timeout'}
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4">
+           <button 
+            onClick={() => window.location.reload()} 
+            className="bg-white text-slate-900 px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-100 transition-all active:scale-95"
+          >
+            Retry Connection
+          </button>
+          <button 
+            onClick={() => navigate('/dashboard')} 
+            className="bg-slate-800 text-white px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-700 transition-all border border-white/10 active:scale-95"
+          >
+            Go Back
+          </button>
+        </div>
       </div>
     );
   }
@@ -141,7 +173,7 @@ const ConsultationRoom: React.FC = () => {
           </div>
           <div>
             <h2 className="text-sm font-bold text-white">
-              {expert ? `Expert Consultation: ${expert.name}` : `Live Session: ${expertId}`}
+              {expert ? `Expert: ${expert.name}` : `Live Session: ${expertId?.split('-')[1] || expertId}`}
             </h2>
             <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">
               {status === 'secure' ? '● End-to-End Encrypted' : 'Establishing Secure Link...'}
