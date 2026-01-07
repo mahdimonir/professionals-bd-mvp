@@ -1,11 +1,8 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Calendar, Clock, Video, FileText, ChevronRight, AlertCircle, 
-  Users, TrendingUp, DollarSign, ShieldAlert, BadgeCheck, MessageSquare,
-  Zap, Hash, ArrowRight, Trash2, Ban, CheckCircle2, XCircle, Search,
-  Filter, MoreVertical, LayoutGrid, List as ListIcon, History, Settings,
-  Circle, Sparkles, BrainCircuit, Info, Loader2, Plus
+  Video, AlertCircle, TrendingUp, DollarSign, ShieldAlert, BadgeCheck, 
+  Loader2, Plus, LogOut, LayoutDashboard, ChevronRight
 } from 'lucide-react';
 import { MOCK_PROFESSIONALS } from '../constants';
 import { BookingStatus, User, Role, Booking } from '../types';
@@ -64,11 +61,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     try {
       // 1. Create ad-hoc meeting
       const res = await ApiService.post<any>('/meetings/adhoc', { 
-        title: `Adhoc Meeting - ${user?.name}`,
-        description: 'Moderated/Admin adhoc consultation room'
+        title: "Office Meeting"
       });
       
       if (res.success) {
+        // Handle both possible structures: res.data.callId or res.data.id
         const callId = res.data.callId || res.data.id;
 
         // 2. Get join token for current user
@@ -76,15 +73,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         
         if (tokenRes.success) {
           const token = tokenRes.data.token;
-          // 3. Join the call (Navigate to Consultation Room with token)
+          // 3. Join the call by navigating to Consultation Room with the token
           navigate(`/consultation/${callId}?token=${token}`);
         } else {
-          // Fallback if token fails but room was created
+          // If token fails, attempt navigation anyway (maybe it's a public room)
           navigate(`/consultation/${callId}`);
         }
       }
     } catch (err: any) {
-      alert(err.message || "Failed to create adhoc meeting room.");
+      console.error(err);
+      alert(err.message || "Failed to create ad-hoc meeting room.");
     } finally {
       setIsCreatingRoom(false);
     }
@@ -118,24 +116,24 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           <h1 className="text-3xl font-black text-slate-900 dark:text-white">
             {user.role === Role.ADMIN ? 'Platform Administration' : 'Moderator Dashboard'}
           </h1>
-          <p className="text-slate-500 font-medium">Platform oversight and incident management.</p>
+          <p className="text-slate-500 font-medium">Platform oversight and high-trust management.</p>
         </div>
         <button 
           onClick={handleCreateRoom}
           disabled={isCreatingRoom}
-          className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl shadow-primary-600/20 active:scale-95 disabled:opacity-50"
+          className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl shadow-primary-600/20 active:scale-95 disabled:opacity-50"
         >
           {isCreatingRoom ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          Generate Adhoc Room
+          Launch Ad-hoc Meeting
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
-          { label: 'Total Experts', value: '14', icon: BadgeCheck, color: 'text-primary-500' },
-          { label: 'Active Meetings', value: '3', icon: Video, color: 'text-green-500' },
-          { label: 'Security Alerts', value: '0', icon: ShieldAlert, color: 'text-amber-500' },
-          { label: 'Revenue (M-T-D)', value: '৳142,500', icon: DollarSign, color: 'text-indigo-500' },
+          { label: 'Network Capacity', value: '94%', icon: BadgeCheck, color: 'text-primary-500' },
+          { label: 'Active Channels', value: '12', icon: Video, color: 'text-green-500' },
+          { label: 'Trust Alerts', value: '0', icon: ShieldAlert, color: 'text-amber-500' },
+          { label: 'System Health', value: 'Optimal', icon: TrendingUp, color: 'text-indigo-500' },
         ].map((stat, i) => (
           <div key={i} className="glass p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between mb-2">
@@ -148,11 +146,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         ))}
       </div>
       
-      {/* Management Content */}
       <div className="glass p-8 rounded-3xl border border-slate-200 dark:border-slate-800">
-          <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6">Recent Activity</h2>
-          <div className="text-center py-12 text-slate-500 italic">
-              All platform systems are operational. No pending moderation actions.
+          <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6">Real-time Platform Logs</h2>
+          <div className="text-center py-12 text-slate-500 italic text-sm">
+              All cryptographic sessions are active. No anomalies detected.
           </div>
       </div>
     </div>
@@ -162,15 +159,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     <div className="space-y-12">
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
         <div className="flex gap-6">
-          <button onClick={() => setActiveTab('active')} className={`text-xs font-black uppercase tracking-widest pb-4 -mb-4 border-b-2 transition-all ${activeTab === 'active' ? 'text-primary-600 border-primary-600' : 'text-slate-400 border-transparent'}`}>Upcoming Sessions</button>
-          <button onClick={() => setActiveTab('history')} className={`text-xs font-black uppercase tracking-widest pb-4 -mb-4 border-b-2 transition-all ${activeTab === 'history' ? 'text-primary-600 border-primary-600' : 'text-slate-400 border-transparent'}`}>Consultation History</button>
+          <button onClick={() => setActiveTab('active')} className={`text-xs font-black uppercase tracking-widest pb-4 -mb-4 border-b-2 transition-all ${activeTab === 'active' ? 'text-primary-600 border-primary-600' : 'text-slate-400 border-transparent'}`}>Upcoming</button>
+          <button onClick={() => setActiveTab('history')} className={`text-xs font-black uppercase tracking-widest pb-4 -mb-4 border-b-2 transition-all ${activeTab === 'history' ? 'text-primary-600 border-primary-600' : 'text-slate-400 border-transparent'}`}>History</button>
         </div>
       </div>
 
       {isLoading ? (
         <div className="py-20 flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fetching Encrypted Records...</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Retrieving Data...</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -193,8 +190,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 </div>
                 <div className="flex items-center gap-3">
                   {b.status === BookingStatus.CONFIRMED && (
-                    <button onClick={() => navigate(`/consultation/${b.professionalId}`)} className="bg-primary-600 text-white px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-primary-500 transition-all shadow-lg shadow-primary-600/20">
-                      <Video className="w-4 h-4" /> Join Now
+                    <button onClick={() => navigate(`/consultation/${b.professionalId}`)} className="bg-primary-600 text-white px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-primary-500 transition-all shadow-lg shadow-primary-600/20">
+                      <Video className="w-4 h-4" /> Start Session
                     </button>
                   )}
                 </div>
@@ -202,8 +199,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             ))}
           
           {bookings.filter(b => activeTab === 'active' ? b.status !== BookingStatus.COMPLETED && b.status !== BookingStatus.CANCELLED : b.status === BookingStatus.COMPLETED || b.status === BookingStatus.CANCELLED).length === 0 && (
-              <div className="py-12 text-center text-slate-500">
-                  No sessions found in this category.
+              <div className="py-12 text-center text-slate-500 text-sm italic">
+                  Your record is currently clear.
               </div>
           )}
         </div>
