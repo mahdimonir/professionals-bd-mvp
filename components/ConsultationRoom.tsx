@@ -115,7 +115,6 @@ const ConsultationRoom: React.FC = () => {
       let targetCallId = expertId;
       let targetCallType = initialCallType;
 
-      // 1. Fetch Token if not provided (Host flow)
       if (!sessionToken && user) {
         const route = user.id.startsWith('guest_') 
           ? `/meetings/adhoc/${expertId}/guest-token` 
@@ -137,7 +136,6 @@ const ConsultationRoom: React.FC = () => {
          throw new Error("Handshake failed: Security token missing.");
       }
 
-      // 2. Identity Sync
       let streamUserId = user?.id || 'anonymous';
       try {
         const decoded: any = jwtDecode(sessionToken);
@@ -149,32 +147,36 @@ const ConsultationRoom: React.FC = () => {
         console.warn("JWT Decode failed, falling back to local ID.");
       }
 
-      setLoadingStep('Initializing client with network resilience...');
+      setLoadingStep('Initializing client with debug diagnostics...');
 
-      // 3. Initialize Client
-      // Fix: Removed unsupported 'options' properties like 'iceServers' which are handled internally by Stream or require specific config types.
+      // 3. Initialize Client with Debugging Options
       const client = new StreamVideoClient({
         apiKey: "h6m4288m7v92",
         user: { 
           id: streamUserId, 
-          name: user?.name || "Guest",
+          name: user?.name || "Mahdi",
         },
         token: sessionToken,
+        options: {
+          logLevel: "debug", // This will show detailed WS connection attempts
+        },
       });
 
-      // 4. Join the call with timeout and error handling
+      // Global client error listener for debugging
+      client.on("connection.error", (event) => {
+        console.error("Stream connection error:", event);
+      });
+
+      // 4. Join the call
       const call = client.call(targetCallType, targetCallId);
       
-      // Fix: Removed invalid event listeners 'call.joining_failed' and 'call.connected' which are not part of standard Stream EventTypes.
-      // Connection status is best managed through call.join() result and hooks.
       call.on("connection.error", (event) => {
-        console.error("❌ WebRTC connection error:", event);
+        console.error("❌ WebRTC call connection error:", event);
       });
 
       setLoadingStep("Establishing media connection...");
       
       try {
-        // Atomic join with creation ensure session existence
         await call.join({ create: true });
         console.log("✅ Call joined successfully!");
         setVideoClient(client);
@@ -182,7 +184,7 @@ const ConsultationRoom: React.FC = () => {
         setStatus('secure');
       } catch (err: any) {
         console.error("❌ Call join failed:", err);
-        throw new Error(`Media handshake failed: ${err.message || 'The network relay timed out.'} Try a mobile hotspot or different network.`);
+        throw new Error(`Media handshake failed: ${err.message || 'The network relay timed out.'}`);
       }
 
       initGemini();
@@ -213,7 +215,6 @@ const ConsultationRoom: React.FC = () => {
           processor.onaudioprocess = (e) => {
             const inputData = e.inputBuffer.getChannelData(0);
             const pcmBlob = createAudioBlob(inputData);
-            // CRITICAL: Always use sessionPromise.then to send data to avoid race conditions and stale closures.
             sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob }));
           };
           source.connect(processor);
