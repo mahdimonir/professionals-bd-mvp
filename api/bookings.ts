@@ -3,6 +3,15 @@ import { prisma } from '../lib/prisma';
 import { BookingStatus } from '../types';
 
 export default async function handler(req: any, res: any) {
+  // Standard CORS Headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,PATCH,DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
@@ -14,22 +23,26 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ message: 'Missing required booking fields' });
     }
 
-    // Create the booking in the database
     const booking = await prisma.booking.create({
       data: {
         userId,
         professionalId,
         startTime: new Date(startTime),
         endTime: new Date(endTime),
-        price: price,
-        status: BookingStatus.CONFIRMED, // Auto-confirming for MVP flow
+        price: price || 0,
+        status: BookingStatus.CONFIRMED,
       },
     });
 
-    return res.status(201).json(booking);
+    return res.status(201).json({
+      success: true,
+      data: booking,
+      message: 'Booking created successfully'
+    });
   } catch (error: any) {
     console.error('Booking Error:', error);
     return res.status(500).json({ 
+      success: false,
       message: 'Failed to create booking', 
       error: error.message 
     });
