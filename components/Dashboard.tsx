@@ -21,7 +21,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   
-  // AI Recommendations State
   const [recommendations, setRecommendations] = useState<{expertId: string, reason: string}[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
@@ -65,19 +64,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       });
       
       if (res.success) {
-        // Handle both possible structures: res.data.callId or res.data.id
-        const callId = res.data.callId || res.data.id;
-
-        // 2. Get join token for current user
-        const tokenRes = await ApiService.get<any>(`/meetings/adhoc/${callId}/token`);
+        // The new backend response provides token and callId immediately
+        const { token, callId, callType } = res.data;
         
-        if (tokenRes.success) {
-          const token = tokenRes.data.token;
-          // 3. Join the call by navigating to Consultation Room with the token
-          navigate(`/consultation/${callId}?token=${token}`);
+        if (token && callId) {
+          navigate(`/consultation/${callId}?token=${token}&type=${callType || 'default'}`);
         } else {
-          // If token fails, attempt navigation anyway (maybe it's a public room)
-          navigate(`/consultation/${callId}`);
+          // Fallback for different data structures
+          const finalId = res.data.id || res.data.callId;
+          navigate(`/consultation/${finalId}`);
         }
       }
     } catch (err: any) {

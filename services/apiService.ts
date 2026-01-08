@@ -1,10 +1,8 @@
 
 import { ApiResponse } from '../types';
 
-const BASE_URL = 
-  (import.meta as any).env?.VITE_BACKEND_URL || 
-  (process.env as any).BACKEND_URL || 
-  'https://serverprofessionalsbd.vercel.app/api/v1';
+// Using relative path to trigger Vercel Proxy (configured in vercel.json)
+const BASE_URL = '/api';
 
 export class ApiService {
   static getBaseUrl() {
@@ -19,7 +17,7 @@ export class ApiService {
     return {
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : '',
-      'x-user-id': user ? user.id : '', // Send User ID for token generation
+      'x-user-id': user ? user.id : '',
     };
   }
 
