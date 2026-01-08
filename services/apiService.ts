@@ -1,7 +1,6 @@
 
 import { ApiResponse } from '../types';
 
-// Detect environment and set base URL
 const BASE_URL = 
   (import.meta as any).env?.VITE_BACKEND_URL || 
   (process.env as any).BACKEND_URL || 
@@ -14,9 +13,13 @@ export class ApiService {
 
   private static getHeaders() {
     const token = localStorage.getItem('probd_access_token');
+    const userJson = localStorage.getItem('probd_user');
+    const user = userJson ? JSON.parse(userJson) : null;
+
     return {
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : '',
+      'x-user-id': user ? user.id : '', // Send User ID for token generation
     };
   }
 

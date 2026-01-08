@@ -16,7 +16,8 @@
     "lucide-react": "^0.562.0",
     "jwt-decode": "4.0.0",
     "@prisma/client": "^7.2.0",
-    "@stream-io/video-react-sdk": "^1.30.0"
+    "@stream-io/video-react-sdk": "^1.30.0",
+    "@stream-io/node-sdk": "^0.7.32"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

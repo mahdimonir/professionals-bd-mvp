@@ -38,6 +38,19 @@ export class AuthService {
     localStorage.setItem(STORAGE_REFRESH_TOKEN, authData.refreshToken);
   }
 
+  static setGuestSession(name: string) {
+    const guestUser: User = {
+      id: `guest_${Math.random().toString(36).substr(2, 9)}`,
+      name: `${name} (Guest)`,
+      email: 'guest@probd.com',
+      role: Role.USER,
+      isVerified: false,
+      avatar: `https://i.pravatar.cc/150?u=${name}`
+    };
+    localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(guestUser));
+    return guestUser;
+  }
+
   static getSession(): User | null {
     const data = localStorage.getItem(STORAGE_USER_KEY);
     return data ? JSON.parse(data) : null;
