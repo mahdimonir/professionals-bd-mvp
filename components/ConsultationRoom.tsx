@@ -24,8 +24,8 @@ const InviteButton: React.FC = () => {
   const [copied, setCopied] = useState(false);
   
   const handleInvite = () => {
-    // Robust URL capturing for HashRouter
-    const url = window.location.origin + window.location.pathname + window.location.hash;
+    // Correctly capture the full URL including # and ?token=... for guests
+    const url = window.location.href;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -112,69 +112,70 @@ const ConsultationRoom: React.FC = () => {
     setLoadingStep('Authorizing Identity...');
     
     try {
-      // 1. Resolve Token & Call Details
       let sessionToken = initialToken;
       let targetCallId = expertId;
       let targetCallType = initialCallType;
 
+      // 1. Fetch Token if not provided in URL
       if (!sessionToken && user) {
         const route = user.id.startsWith('guest_') 
           ? `/meetings/adhoc/${expertId}/guest-token` 
           : `/meetings/adhoc/${expertId}/token`;
         
-        const res = user.id.startsWith('guest_') 
-          ? await ApiService.post<any>(route, { userId: user.id }) 
-          : await ApiService.get<any>(route);
+        const res = await ApiService.request<any>(route, { 
+          method: user.id.startsWith('guest_') ? 'POST' : 'GET',
+          body: user.id.startsWith('guest_') ? JSON.stringify({ userId: user.id }) : undefined
+        });
         
         if (res.success) {
           sessionToken = res.data.token;
-          // CRITICAL: Use the callId from the API if provided!
           if (res.data.callId) targetCallId = res.data.callId;
           if (res.data.callType) targetCallType = res.data.callType;
         }
       }
 
       if (!sessionToken) {
-         if (!user) return; 
-         throw new Error("Authorization token is missing.");
+         if (!user) return; // Wait for login or guest join
+         throw new Error("Handshake failed: Security token missing.");
       }
 
-      // --- CRITICAL IDENTITY SYNC ---
+      // 2. Identity Sync from JWT
       let streamUserId = user?.id || 'anonymous';
       try {
         const decoded: any = jwtDecode(sessionToken);
         if (decoded.user_id) {
           streamUserId = decoded.user_id;
-          console.debug("Stream User ID synced with JWT:", streamUserId);
+          console.debug("🔑 Verified Stream Identity:", streamUserId);
         }
       } catch (e) {
-        console.warn("Could not decode JWT.");
+        console.warn("Could not verify JWT payload. Handshake may fail.");
       }
 
-      setLoadingStep('Verifying Meeting Channel...');
+      setLoadingStep('Connecting to Stream Mesh...');
 
-      // 2. Initialize Stream Client
+      // 3. Initialize Client
       const client = new StreamVideoClient({
         apiKey: "h6m4288m7v92",
         user: { 
           id: streamUserId, 
-          name: user?.name || 'Authorized Participant', 
+          name: user?.name || 'Authorized User', 
           image: user?.avatar 
         },
         token: sessionToken,
       });
 
-      // 3. Join the Call
+      // 4. Atomic Join Call
       const call = client.call(targetCallType, targetCallId);
       
       const joinTimeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Media Handshake Timed Out. Please check your network or refresh the page.")), 25000)
+        setTimeout(() => reject(new Error("Handshake timeout: The secure media mesh is taking too long to respond.")), 25000)
       );
 
-      // We use call.get() first to check status, then join
-      setLoadingStep('Joining Secure Media Mesh...');
+      setLoadingStep('Establishing Media Secure Link...');
+      
+      // Use create: true to ensure the call exists on Stream's servers
       await Promise.race([
-        call.get().then(() => call.join()),
+        call.join({ create: true }),
         joinTimeout
       ]);
       
@@ -182,11 +183,12 @@ const ConsultationRoom: React.FC = () => {
       setActiveCall(call);
       setStatus('secure');
 
+      // 5. Start AI Node
       initGemini();
 
     } catch (err: any) {
-      console.error("Session Establishment Failed:", err);
-      setErrorMessage(err.message || "Identity verification failed.");
+      console.error("Consultation Startup Error:", err);
+      setErrorMessage(err.message || "Failed to establish secure consultation channel.");
       setStatus('error');
     }
   };
@@ -229,12 +231,12 @@ const ConsultationRoom: React.FC = () => {
             nextStartTimeRef.current += buffer.duration;
           }
         },
-        onError: (err) => console.error("AI Node Error:", err),
-        onClose: () => console.log("AI Node Closed")
+        onError: (err) => console.error("AI Error:", err),
+        onClose: () => console.log("AI Node Offline")
       });
       geminiSessionPromiseRef.current = sessionPromise;
     } catch (err) {
-      console.warn("AI Engine omitted.");
+      console.warn("AI capabilities disabled for this session.");
     }
   };
 
@@ -288,9 +290,12 @@ const ConsultationRoom: React.FC = () => {
         <div className="bg-red-500/10 p-4 rounded-3xl border border-red-500/20 mb-6">
           <AlertTriangle className="w-12 h-12 text-red-500" />
         </div>
-        <h2 className="text-2xl font-black text-white mb-4 uppercase">Identity Verification Failed</h2>
+        <h2 className="text-2xl font-black text-white mb-4 uppercase">Handshake Failed</h2>
         <p className="text-slate-400 mb-8 max-w-sm text-sm leading-relaxed">{errorMessage}</p>
-        <button onClick={() => navigate('/dashboard')} className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black uppercase text-xs transition-transform active:scale-95 shadow-2xl">Return to Dashboard</button>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <button onClick={() => window.location.reload()} className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black uppercase text-xs transition-transform active:scale-95 shadow-2xl">Retry Connection</button>
+          <button onClick={() => navigate('/dashboard')} className="text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-white transition-colors">Return to Dashboard</button>
+        </div>
       </div>
     );
   }
@@ -303,7 +308,7 @@ const ConsultationRoom: React.FC = () => {
             <Shield className={`w-5 h-5 ${status === 'secure' ? 'text-green-400' : 'text-primary-400'}`} />
           </div>
           <div>
-            <h2 className="text-sm font-black text-white uppercase tracking-wider">{expertId?.toUpperCase()}</h2>
+            <h2 className="text-sm font-black text-white uppercase tracking-wider">Expert: {expertId?.split('-')[0]?.toUpperCase() || 'SESSION'}</h2>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
               <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{currentUser?.name || 'Authorized Participant'}</span>

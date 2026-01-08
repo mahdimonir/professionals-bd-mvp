@@ -21,6 +21,7 @@ export default async function handler(req: any, res: any) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathParts = url.pathname.split('/').filter(Boolean); 
   
+  // Extract segments: /api/v1/meetings/adhoc/:callId/token
   const adhocIndex = pathParts.indexOf('adhoc');
   const callIdFromPath = adhocIndex !== -1 ? pathParts[adhocIndex + 1] : null;
   const action = adhocIndex !== -1 ? pathParts[adhocIndex + 2] : null;
@@ -38,7 +39,12 @@ export default async function handler(req: any, res: any) {
 
       return res.status(200).json({
         success: true,
-        data: { token, callId: callIdFromPath, callType: 'default' }
+        data: { 
+          token, 
+          callId: callIdFromPath, 
+          callType: 'default',
+          userId: userId
+        }
       });
     } catch (error: any) {
       return res.status(500).json({ success: false, message: error.message });
@@ -48,7 +54,7 @@ export default async function handler(req: any, res: any) {
   // Handle Member Token Generation
   if (method === 'GET' && action === 'token') {
     try {
-      const userId = req.headers['x-user-id'] || 'anonymous_guest';
+      const userId = req.headers['x-user-id'] || 'anonymous_member';
       const token = client.generateUserToken({ 
         user_id: userId, 
         validity_in_seconds: 86400 
@@ -56,20 +62,29 @@ export default async function handler(req: any, res: any) {
 
       return res.status(200).json({
         success: true,
-        data: { token, callId: callIdFromPath, callType: 'default' }
+        data: { 
+          token, 
+          callId: callIdFromPath, 
+          callType: 'default',
+          userId: userId
+        }
       });
     } catch (error: any) {
       return res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // Handle Ad-hoc Creation
+  // Handle Ad-hoc Creation (POST /api/meetings/adhoc)
   if (method === 'POST' && adhocIndex !== -1 && !callIdFromPath) {
     try {
-      const newCallId = `adhoc_${Math.random().toString(36).substr(2, 9)}`;
-      const creatorId = req.headers['x-user-id'] || 'admin';
+      const creatorId = req.headers['x-user-id'] || 'admin_creator';
+      // Use the format expected by the frontend
+      const newCallId = `adhoc-${creatorId}-${Date.now()}`;
       
-      const token = client.generateUserToken({ user_id: creatorId });
+      const token = client.generateUserToken({ 
+        user_id: creatorId,
+        validity_in_seconds: 86400
+      });
 
       return res.status(201).json({
         success: true,
@@ -77,7 +92,8 @@ export default async function handler(req: any, res: any) {
           id: newCallId,
           callId: newCallId,
           token: token,
-          callType: 'default'
+          callType: 'default',
+          userId: creatorId
         }
       });
     } catch (error: any) {
