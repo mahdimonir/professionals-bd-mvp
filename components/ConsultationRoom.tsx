@@ -24,8 +24,8 @@ const InviteButton: React.FC = () => {
   const [copied, setCopied] = useState(false);
   
   const handleInvite = () => {
-    // For HashRouter, window.location.href is required to get the full link with # and params
-    const url = window.location.href;
+    // Robust URL capturing for HashRouter
+    const url = window.location.origin + window.location.pathname + window.location.hash;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -76,7 +76,7 @@ const ConsultationRoom: React.FC = () => {
   const { expertId } = useParams();
   const [searchParams] = useSearchParams();
   const initialToken = searchParams.get('token');
-  const callType = searchParams.get('type') || 'default';
+  const initialCallType = searchParams.get('type') || 'default';
   const navigate = useNavigate();
   
   const [currentUser, setCurrentUser] = useState(AuthService.getSession());
@@ -112,8 +112,11 @@ const ConsultationRoom: React.FC = () => {
     setLoadingStep('Authorizing Identity...');
     
     try {
-      // 1. Resolve Token
+      // 1. Resolve Token & Call Details
       let sessionToken = initialToken;
+      let targetCallId = expertId;
+      let targetCallType = initialCallType;
+
       if (!sessionToken && user) {
         const route = user.id.startsWith('guest_') 
           ? `/meetings/adhoc/${expertId}/guest-token` 
@@ -123,16 +126,20 @@ const ConsultationRoom: React.FC = () => {
           ? await ApiService.post<any>(route, { userId: user.id }) 
           : await ApiService.get<any>(route);
         
-        if (res.success) sessionToken = res.data.token;
+        if (res.success) {
+          sessionToken = res.data.token;
+          // CRITICAL: Use the callId from the API if provided!
+          if (res.data.callId) targetCallId = res.data.callId;
+          if (res.data.callType) targetCallType = res.data.callType;
+        }
       }
 
       if (!sessionToken) {
          if (!user) return; 
-         throw new Error("Authorization token is missing. Please re-enter from dashboard.");
+         throw new Error("Authorization token is missing.");
       }
 
       // --- CRITICAL IDENTITY SYNC ---
-      // We MUST use the user_id that is actually signed inside the JWT
       let streamUserId = user?.id || 'anonymous';
       try {
         const decoded: any = jwtDecode(sessionToken);
@@ -141,33 +148,33 @@ const ConsultationRoom: React.FC = () => {
           console.debug("Stream User ID synced with JWT:", streamUserId);
         }
       } catch (e) {
-        console.warn("Could not decode JWT. Handshake might fail.");
+        console.warn("Could not decode JWT.");
       }
 
-      setLoadingStep('Connecting to Media Mesh...');
+      setLoadingStep('Verifying Meeting Channel...');
 
       // 2. Initialize Stream Client
       const client = new StreamVideoClient({
         apiKey: "h6m4288m7v92",
         user: { 
           id: streamUserId, 
-          name: user?.name || 'Authorized Guest', 
+          name: user?.name || 'Authorized Participant', 
           image: user?.avatar 
         },
         token: sessionToken,
       });
 
       // 3. Join the Call
-      const call = client.call(callType, expertId);
+      const call = client.call(targetCallType, targetCallId);
       
-      // Use a slightly longer timeout for international handshakes
       const joinTimeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Media Handshake Timed Out. Please check your network or try a different browser.")), 30000)
+        setTimeout(() => reject(new Error("Media Handshake Timed Out. Please check your network or refresh the page.")), 25000)
       );
 
-      // We get or create to be safer
+      // We use call.get() first to check status, then join
+      setLoadingStep('Joining Secure Media Mesh...');
       await Promise.race([
-        call.getOrCreate({ data: { members: [{ user_id: streamUserId }] } }).then(() => call.join()),
+        call.get().then(() => call.join()),
         joinTimeout
       ]);
       
@@ -175,12 +182,11 @@ const ConsultationRoom: React.FC = () => {
       setActiveCall(call);
       setStatus('secure');
 
-      // 4. Initialize Gemini AI Node (Optional/Async)
       initGemini();
 
     } catch (err: any) {
       console.error("Session Establishment Failed:", err);
-      setErrorMessage(err.message || "Failed to establish secure session.");
+      setErrorMessage(err.message || "Identity verification failed.");
       setStatus('error');
     }
   };
@@ -190,7 +196,6 @@ const ConsultationRoom: React.FC = () => {
       const gemini = new GeminiService();
       const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       audioContextRef.current = outputAudioContext;
-
       const inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -224,13 +229,12 @@ const ConsultationRoom: React.FC = () => {
             nextStartTimeRef.current += buffer.duration;
           }
         },
-        onError: (err) => console.error("Gemini Error:", err),
-        onClose: () => console.log("Gemini Closed")
+        onError: (err) => console.error("AI Node Error:", err),
+        onClose: () => console.log("AI Node Closed")
       });
-
       geminiSessionPromiseRef.current = sessionPromise;
     } catch (err) {
-      console.warn("Gemini Node failed to start.", err);
+      console.warn("AI Engine omitted.");
     }
   };
 
@@ -302,7 +306,7 @@ const ConsultationRoom: React.FC = () => {
             <h2 className="text-sm font-black text-white uppercase tracking-wider">{expertId?.toUpperCase()}</h2>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{currentUser?.name || 'Authorized Guest'}</span>
+              <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{currentUser?.name || 'Authorized Participant'}</span>
             </div>
           </div>
         </div>

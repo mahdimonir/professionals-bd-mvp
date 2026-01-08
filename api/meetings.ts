@@ -7,7 +7,6 @@ const STREAM_SECRET = 'your_stream_secret_here';
 const client = new StreamClient(STREAM_API_KEY, STREAM_SECRET);
 
 export default async function handler(req: any, res: any) {
-  // --- DYNAMIC CORS HANDLER ---
   const origin = req.headers.origin || '*';
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,PATCH,DELETE,PUT');
@@ -19,69 +18,66 @@ export default async function handler(req: any, res: any) {
   }
 
   const { method, body } = req;
-  
-  // Robust Path Parsing
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathParts = url.pathname.split('/').filter(Boolean); 
   
-  // Find "adhoc" and determine context from there
   const adhocIndex = pathParts.indexOf('adhoc');
-  const callId = adhocIndex !== -1 ? pathParts[adhocIndex + 1] : null;
+  const callIdFromPath = adhocIndex !== -1 ? pathParts[adhocIndex + 1] : null;
   const action = adhocIndex !== -1 ? pathParts[adhocIndex + 2] : null;
 
-  // Handle Guest Token Generation: POST /api/meetings/adhoc/[id]/guest-token
+  // Handle Guest Token Generation
   if (method === 'POST' && action === 'guest-token') {
     try {
       const { userId } = body;
-      if (!userId) {
-        return res.status(400).json({ success: false, message: 'Missing userId for guest token' });
-      }
+      if (!userId) return res.status(400).json({ success: false, message: 'Missing userId' });
       
-      const validity = 60 * 60 * 2; // 2 hours
       const token = client.generateUserToken({ 
         user_id: userId, 
-        validity_in_seconds: validity 
+        validity_in_seconds: 7200 
       });
 
       return res.status(200).json({
         success: true,
-        data: { token }
+        data: { token, callId: callIdFromPath, callType: 'default' }
       });
     } catch (error: any) {
       return res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // Handle Member Token Generation: GET /api/meetings/adhoc/[id]/token
+  // Handle Member Token Generation
   if (method === 'GET' && action === 'token') {
     try {
       const userId = req.headers['x-user-id'] || 'anonymous_guest';
-      const validity = 60 * 60 * 24;
       const token = client.generateUserToken({ 
         user_id: userId, 
-        validity_in_seconds: validity 
+        validity_in_seconds: 86400 
       });
 
       return res.status(200).json({
         success: true,
-        data: { token }
+        data: { token, callId: callIdFromPath, callType: 'default' }
       });
     } catch (error: any) {
       return res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // Handle Meeting Creation: POST /api/meetings/adhoc
-  // Triggered by Admin/Moderator dashboard
-  if (method === 'POST' && adhocIndex !== -1 && !callId) {
+  // Handle Ad-hoc Creation
+  if (method === 'POST' && adhocIndex !== -1 && !callIdFromPath) {
     try {
       const newCallId = `adhoc_${Math.random().toString(36).substr(2, 9)}`;
+      const creatorId = req.headers['x-user-id'] || 'admin';
+      
+      const token = client.generateUserToken({ user_id: creatorId });
+
       return res.status(201).json({
         success: true,
         data: { 
           id: newCallId,
           callId: newCallId,
-          title: body.title || 'Quick Consultation'
+          token: token,
+          callType: 'default'
         }
       });
     } catch (error: any) {
