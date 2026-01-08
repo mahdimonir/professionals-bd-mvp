@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, useSearchParams, useNavigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ExpertCard from './components/ExpertCard';
 import Dashboard from './components/Dashboard';
@@ -156,7 +156,8 @@ const Marketplace: React.FC<{
   );
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(AuthService.getSession());
   const [searchTerm, setSearchTerm] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
@@ -164,6 +165,9 @@ const App: React.FC = () => {
     (localStorage.getItem('theme') as 'light' | 'dark') || 
     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   );
+
+  // Check if we are in a consultation room to hide global layout
+  const isConsultation = location.pathname.startsWith('/consultation/');
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
@@ -198,8 +202,8 @@ const App: React.FC = () => {
   };
 
   return (
-    <Router>
-      <div className="min-h-screen flex flex-col transition-colors duration-300">
+    <div className="min-h-screen flex flex-col transition-colors duration-300">
+      {!isConsultation && (
         <Navbar 
           user={user} 
           onLogout={handleLogout} 
@@ -210,20 +214,23 @@ const App: React.FC = () => {
           setSearchTerm={setSearchTerm}
           isScrolled={isScrolled}
         />
-        <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<Marketplace user={user} searchTerm={searchTerm} setSearchTerm={setSearchTerm} isScrolled={isScrolled} />} />
-            <Route path="/login" element={<Auth mode="login" />} />
-            <Route path="/register" element={<Auth mode="register" />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/dashboard" element={<Dashboard user={user} />} />
-            <Route path="/profile" element={<Profile user={user} />} />
-            <Route path="/consultation/:expertId" element={<ConsultationRoom />} />
-          </Routes>
-        </main>
-        
-        <AIAssistant />
+      )}
+      
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<Marketplace user={user} searchTerm={searchTerm} setSearchTerm={setSearchTerm} isScrolled={isScrolled} />} />
+          <Route path="/login" element={<Auth mode="login" />} />
+          <Route path="/register" element={<Auth mode="register" />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/dashboard" element={<Dashboard user={user} />} />
+          <Route path="/profile" element={<Profile user={user} />} />
+          <Route path="/consultation/:expertId" element={<ConsultationRoom />} />
+        </Routes>
+      </main>
+      
+      {!isConsultation && <AIAssistant />}
 
+      {!isConsultation && (
         <footer className="py-12 border-t border-slate-200 dark:border-slate-900 glass-dark">
           <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
@@ -233,7 +240,15 @@ const App: React.FC = () => {
             <p className="text-xs text-slate-500">© 2026 ProfessionalsBD. Premium High-Trust Expert Network.</p>
           </div>
         </footer>
-      </div>
+      )}
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 };
