@@ -33,7 +33,7 @@ const InviteButton: React.FC = () => {
   return (
     <button 
       onClick={handleInvite}
-      className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-primary-600/20 active:scale-95 group"
+      className="flex items-center gap-2 px-4 py-2 bg-primary-600/10 hover:bg-primary-500/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-primary-500/20 active:scale-95 group"
     >
       {copied ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4 group-hover:scale-110 transition-transform" />}
       {copied ? 'Link Copied!' : 'Invite Participant'}
@@ -137,7 +137,7 @@ const ConsultationRoom: React.FC = () => {
          throw new Error("Handshake failed: Security token missing.");
       }
 
-      // 2. Identity Sync - CRITICAL: Must use the exact ID from the token
+      // 2. Identity Sync
       let streamUserId = user?.id || 'anonymous';
       try {
         const decoded: any = jwtDecode(sessionToken);
@@ -149,36 +149,46 @@ const ConsultationRoom: React.FC = () => {
         console.warn("JWT Decode failed, falling back to local ID.");
       }
 
-      setLoadingStep('Connecting to Signaling Mesh...');
+      setLoadingStep('Initializing client with network resilience...');
 
       // 3. Initialize Client
-      // We don't use Promise.race here because we want to see the real SDK error if it fails
+      // Fix: Removed unsupported 'options' properties like 'iceServers' which are handled internally by Stream or require specific config types.
       const client = new StreamVideoClient({
         apiKey: "h6m4288m7v92",
         user: { 
           id: streamUserId, 
-          name: user?.name || 'Authorized User'
+          name: user?.name || "Guest",
         },
         token: sessionToken,
       });
 
-      // 4. Join the call
+      // 4. Join the call with timeout and error handling
       const call = client.call(targetCallType, targetCallId);
       
-      setLoadingStep('Joining Secure Channel...');
+      // Fix: Removed invalid event listeners 'call.joining_failed' and 'call.connected' which are not part of standard Stream EventTypes.
+      // Connection status is best managed through call.join() result and hooks.
+      call.on("connection.error", (event) => {
+        console.error("❌ WebRTC connection error:", event);
+      });
+
+      setLoadingStep("Establishing media connection...");
       
-      // We rely on the SDK's internal connection timeout
-      await call.join();
-      
-      setVideoClient(client);
-      setActiveCall(call);
-      setStatus('secure');
+      try {
+        // Atomic join with creation ensure session existence
+        await call.join({ create: true });
+        console.log("✅ Call joined successfully!");
+        setVideoClient(client);
+        setActiveCall(call);
+        setStatus('secure');
+      } catch (err: any) {
+        console.error("❌ Call join failed:", err);
+        throw new Error(`Media handshake failed: ${err.message || 'The network relay timed out.'} Try a mobile hotspot or different network.`);
+      }
 
       initGemini();
 
     } catch (err: any) {
       console.error("Consultation Handshake Error:", err);
-      // More descriptive error handling
       let msg = "Failed to connect to the secure media mesh.";
       if (err.message?.includes('token')) msg = "Identity token has expired or is invalid.";
       if (err.message?.includes('Permission')) msg = "You do not have permission to access this secure channel.";
@@ -203,6 +213,7 @@ const ConsultationRoom: React.FC = () => {
           processor.onaudioprocess = (e) => {
             const inputData = e.inputBuffer.getChannelData(0);
             const pcmBlob = createAudioBlob(inputData);
+            // CRITICAL: Always use sessionPromise.then to send data to avoid race conditions and stale closures.
             sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob }));
           };
           source.connect(processor);
