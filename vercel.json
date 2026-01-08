@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://serverprofessionalsbd.vercel.app/api/v1/$1"
+      "destination": "http://localhost:8000/api/v1/$1"
     }
   ]
 }
