@@ -141,50 +141,51 @@ const ConsultationRoom: React.FC = () => {
         const decoded: any = jwtDecode(sessionToken);
         if (decoded.user_id) {
           streamUserId = decoded.user_id;
-          console.debug("🔑 Verified Stream Identity from Token:", streamUserId);
         }
       } catch (e) {
-        console.warn("JWT Decode failed, falling back to local ID.");
+        console.warn("Using fallback local ID for stream session.");
       }
 
-      setLoadingStep('Initializing client with debug diagnostics...');
+      setLoadingStep('Initializing client...');
 
-      // 3. Initialize Client with Debugging Options
+      // Use VITE_STREAM_API_KEY from env as requested
+      const API_KEY = (import.meta as any).env?.VITE_STREAM_API_KEY || "h6m4288m7v92";
+
       const client = new StreamVideoClient({
-        apiKey: "h6m4288m7v92",
+        apiKey: API_KEY,
         user: { 
           id: streamUserId, 
-          name: user?.name || "Mahdi",
+          name: user?.name || "Authorized User",
         },
         token: sessionToken,
         options: {
-          logLevel: "debug", // This will show detailed WS connection attempts
+          logLevel: "debug", // Critical for troubleshooting WS handshakes
         },
       });
 
-      // Global client error listener for debugging
+      // Global connection error tracking
       client.on("connection.error", (event) => {
-        console.error("Stream connection error:", event);
+        console.error("Stream WebSocket connection error:", event);
       });
 
-      // 4. Join the call
       const call = client.call(targetCallType, targetCallId);
       
       call.on("connection.error", (event) => {
-        console.error("❌ WebRTC call connection error:", event);
+        console.error("❌ WebRTC media connection error:", event);
       });
 
-      setLoadingStep("Establishing media connection...");
+      setLoadingStep("Establishing secure tunnel...");
       
       try {
+        // Atomic join to handle any race conditions with call creation
         await call.join({ create: true });
-        console.log("✅ Call joined successfully!");
+        console.log("✅ Secure channel established.");
         setVideoClient(client);
         setActiveCall(call);
         setStatus('secure');
       } catch (err: any) {
-        console.error("❌ Call join failed:", err);
-        throw new Error(`Media handshake failed: ${err.message || 'The network relay timed out.'}`);
+        console.error("❌ Media Handshake failed:", err);
+        throw new Error(`The secure media tunnel could not be established: ${err.message}`);
       }
 
       initGemini();
@@ -193,7 +194,6 @@ const ConsultationRoom: React.FC = () => {
       console.error("Consultation Handshake Error:", err);
       let msg = "Failed to connect to the secure media mesh.";
       if (err.message?.includes('token')) msg = "Identity token has expired or is invalid.";
-      if (err.message?.includes('Permission')) msg = "You do not have permission to access this secure channel.";
       
       setErrorMessage(`${msg} Details: ${err.message || 'Unknown'}`);
       setStatus('error');
@@ -238,12 +238,12 @@ const ConsultationRoom: React.FC = () => {
             nextStartTimeRef.current += buffer.duration;
           }
         },
-        onError: (err) => console.error("AI Error:", err),
-        onClose: () => console.log("AI Node Offline")
+        onError: (err) => console.error("AI Node Error:", err),
+        onClose: () => console.log("AI Context Terminated")
       });
       geminiSessionPromiseRef.current = sessionPromise;
     } catch (err) {
-      console.warn("AI capabilities disabled for this session.");
+      console.warn("AI context layer unavailable.");
     }
   };
 
@@ -271,12 +271,12 @@ const ConsultationRoom: React.FC = () => {
           <div className="bg-primary-600/10 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-primary-500/20">
              <Lock className="w-10 h-10 text-primary-500" />
           </div>
-          <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Private Session</h2>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-10">Secured via Trust-Lock™</p>
+          <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Secure Entrance</h2>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-10">Verification required to join the stream</p>
           <form onSubmit={handleGuestJoin} className="space-y-4">
             <input 
               type="text" 
-              placeholder="Your Display Name" 
+              placeholder="Display Name" 
               className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none focus:border-primary-500 transition-all placeholder:text-slate-600"
               value={guestName}
               onChange={e => setGuestName(e.target.value)}
@@ -297,12 +297,12 @@ const ConsultationRoom: React.FC = () => {
         <div className="bg-red-500/10 p-4 rounded-3xl border border-red-500/20 mb-6">
           <AlertTriangle className="w-12 h-12 text-red-500" />
         </div>
-        <h2 className="text-2xl font-black text-white mb-4 uppercase">Handshake Failed</h2>
+        <h2 className="text-2xl font-black text-white mb-4 uppercase tracking-tighter">Connection Failed</h2>
         <div className="max-w-md bg-white/5 border border-white/10 p-4 rounded-2xl mb-8">
           <p className="text-red-400 text-xs font-mono break-words leading-relaxed">{errorMessage}</p>
         </div>
         <div className="flex flex-col gap-3 w-full max-w-xs">
-          <button onClick={() => window.location.reload()} className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black uppercase text-xs transition-transform active:scale-95 shadow-2xl">Retry Connection</button>
+          <button onClick={() => window.location.reload()} className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black uppercase text-xs transition-transform active:scale-95 shadow-2xl">Retry Link</button>
           <button onClick={() => navigate('/dashboard')} className="text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-white transition-colors">Return to Dashboard</button>
         </div>
       </div>
