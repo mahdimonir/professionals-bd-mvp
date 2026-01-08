@@ -166,7 +166,7 @@ const AppContent: React.FC = () => {
     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   );
 
-  // Check if we are in a consultation room to hide global layout
+  // Focus Mode: Hide global UI for consultation rooms
   const isConsultation = location.pathname.startsWith('/consultation/');
 
   useEffect(() => {
