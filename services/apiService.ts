@@ -29,7 +29,8 @@ export class ApiService {
       const response = await fetch(url, { ...options, headers });
       const data = await response.json();
       
-      if (!response.ok) {
+      // Some backends return 200 OK but a custom success flag inside
+      if (!response.ok || (data.success === false)) {
         throw new Error(data.message || `API Error: ${response.status}`);
       }
       

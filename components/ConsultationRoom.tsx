@@ -18,12 +18,14 @@ import {
 } from '@stream-io/video-react-sdk';
 import { AuthService } from '../services/authService';
 import { ApiService } from '../services/apiService';
+import { jwtDecode } from 'jwt-decode';
 
 const InviteButton: React.FC = () => {
   const [copied, setCopied] = useState(false);
   
   const handleInvite = () => {
-    const url = window.location.origin + window.location.pathname + window.location.search;
+    // Correctly handle HashRouter URLs by using full href
+    const url = window.location.href;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -103,89 +105,124 @@ const ConsultationRoom: React.FC = () => {
   };
 
   const startSession = async (user = currentUser) => {
-    if (!user || !expertId) return;
+    if (!expertId) return;
     
     setStatus('joining_stream');
     try {
-      // 1. Fetch Session Token if not provided in URL
+      // 1. Resolve Token
       let sessionToken = initialToken;
-      if (!sessionToken) {
-        const route = user.id.startsWith('guest_') ? `/meetings/adhoc/${expertId}/guest-token` : `/meetings/adhoc/${expertId}/token`;
-        const payload = user.id.startsWith('guest_') ? { userId: user.id } : {};
-        const res = user.id.startsWith('guest_') ? await ApiService.post<any>(route, payload) : await ApiService.get<any>(route);
+      if (!sessionToken && user) {
+        const route = user.id.startsWith('guest_') 
+          ? `/meetings/adhoc/${expertId}/guest-token` 
+          : `/meetings/adhoc/${expertId}/token`;
+        
+        const res = user.id.startsWith('guest_') 
+          ? await ApiService.post<any>(route, { userId: user.id }) 
+          : await ApiService.get<any>(route);
         
         if (res.success) sessionToken = res.data.token;
-        else throw new Error("Could not authorize your access. Token missing.");
       }
 
-      if (!sessionToken) throw new Error("Invalid session configuration.");
+      if (!sessionToken) {
+         if (!user) return; // Wait for login
+         throw new Error("Authorization token is missing. Please refresh the page.");
+      }
 
-      // 2. Initialize Video Call
+      // --- CRITICAL SYNC: Use ID from Token ---
+      let streamUserId = user?.id || 'anonymous';
+      try {
+        const decoded: any = jwtDecode(sessionToken);
+        if (decoded.user_id) {
+          streamUserId = decoded.user_id;
+          console.debug("Synchronizing identity with backend token:", streamUserId);
+        }
+      } catch (e) {
+        console.warn("Could not parse token user_id, using local identifier.");
+      }
+
+      // 2. Initialize Stream
       const client = new StreamVideoClient({
         apiKey: "h6m4288m7v92",
-        user: { id: user.id, name: user.name, image: user.avatar },
+        user: { 
+          id: streamUserId, 
+          name: user?.name || 'Guest User', 
+          image: user?.avatar 
+        },
         token: sessionToken,
       });
 
       const call = client.call(callType, expertId);
-      await call.join({ create: true });
+      
+      // Connection timeout protection
+      const joinTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("The connection handshake timed out. Check your internet connection.")), 15000)
+      );
+
+      await Promise.race([
+        call.join({ create: true }),
+        joinTimeout
+      ]);
       
       setVideoClient(client);
       setActiveCall(call);
       setStatus('secure');
 
-      // 3. Initialize Gemini AI Node
-      const gemini = new GeminiService();
-      try {
-        const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        audioContextRef.current = outputAudioContext;
-
-        const inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-        const sessionPromise = gemini.connectLive({
-          onOpen: () => {
-            const source = inputAudioContext.createMediaStreamSource(stream);
-            const processor = inputAudioContext.createScriptProcessor(4096, 1, 1);
-            processor.onaudioprocess = (e) => {
-              const inputData = e.inputBuffer.getChannelData(0);
-              const pcmBlob = createAudioBlob(inputData);
-              sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob }));
-            };
-            source.connect(processor);
-            processor.connect(inputAudioContext.destination);
-          },
-          onMessage: async (message: LiveServerMessage) => {
-            if (message.serverContent?.outputTranscription) {
-              setTranscriptions(prev => [...prev.slice(-10), { role: 'Expert/AI', text: message.serverContent!.outputTranscription!.text }]);
-            } else if (message.serverContent?.inputTranscription) {
-              setTranscriptions(prev => [...prev.slice(-10), { role: 'You', text: message.serverContent!.inputTranscription!.text }]);
-            }
-
-            const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-            if (base64Audio && audioContextRef.current) {
-              const buffer = await decodeAudioData(decode(base64Audio), audioContextRef.current, 24000, 1);
-              const source = audioContextRef.current.createBufferSource();
-              source.buffer = buffer;
-              source.connect(audioContextRef.current.destination);
-              nextStartTimeRef.current = Math.max(nextStartTimeRef.current, audioContextRef.current.currentTime);
-              source.start(nextStartTimeRef.current);
-              nextStartTimeRef.current += buffer.duration;
-            }
-          },
-          onError: (err) => console.error("AI Node Error:", err),
-          onClose: () => console.log("AI Node Closed")
-        });
-
-        geminiSessionPromiseRef.current = sessionPromise;
-      } catch (aiErr) {
-        console.warn("AI Engine failed to start, continuing with video only.", aiErr);
-      }
+      // 3. Optional: Start Gemini (Non-blocking)
+      initGemini();
 
     } catch (err: any) {
-      console.error("Session Error:", err);
-      setErrorMessage(err.message || "Session establishment failed.");
+      console.error("Consultation Startup Failed:", err);
+      setErrorMessage(err.message || "Failed to establish secure session.");
       setStatus('error');
+    }
+  };
+
+  const initGemini = async () => {
+    try {
+      const gemini = new GeminiService();
+      const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      audioContextRef.current = outputAudioContext;
+
+      const inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      const sessionPromise = gemini.connectLive({
+        onOpen: () => {
+          const source = inputAudioContext.createMediaStreamSource(stream);
+          const processor = inputAudioContext.createScriptProcessor(4096, 1, 1);
+          processor.onaudioprocess = (e) => {
+            const inputData = e.inputBuffer.getChannelData(0);
+            const pcmBlob = createAudioBlob(inputData);
+            sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob }));
+          };
+          source.connect(processor);
+          processor.connect(inputAudioContext.destination);
+        },
+        onMessage: async (message: LiveServerMessage) => {
+          if (message.serverContent?.outputTranscription) {
+            setTranscriptions(prev => [...prev.slice(-10), { role: 'Expert/AI', text: message.serverContent!.outputTranscription!.text }]);
+          } else if (message.serverContent?.inputTranscription) {
+            setTranscriptions(prev => [...prev.slice(-10), { role: 'You', text: message.serverContent!.inputTranscription!.text }]);
+          }
+
+          const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+          if (base64Audio && audioContextRef.current) {
+            const buffer = await decodeAudioData(decode(base64Audio), audioContextRef.current, 24000, 1);
+            const source = audioContextRef.current.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioContextRef.current.destination);
+            nextStartTimeRef.current = Math.max(nextStartTimeRef.current, audioContextRef.current.currentTime);
+            source.start(nextStartTimeRef.current);
+            nextStartTimeRef.current += buffer.duration;
+          }
+        },
+        onError: (err) => console.error("AI Analytics Failure:", err),
+        onClose: () => console.log("AI Context Engine closed.")
+      });
+
+      geminiSessionPromiseRef.current = sessionPromise;
+    } catch (err) {
+      console.warn("Gemini Engine failed to initialize, continuing session without AI support.", err);
     }
   };
 
@@ -198,7 +235,7 @@ const ConsultationRoom: React.FC = () => {
   };
 
   useEffect(() => {
-    if (currentUser) startSession();
+    if (initialToken || currentUser) startSession();
     return () => {
       if (videoClient) videoClient.disconnectUser();
       if (audioContextRef.current) audioContextRef.current.close();
@@ -206,7 +243,7 @@ const ConsultationRoom: React.FC = () => {
     };
   }, [expertId]);
 
-  if (!currentUser && status !== 'error') {
+  if (!currentUser && !initialToken && status !== 'error') {
     return (
       <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 z-[200]">
         <div className="max-w-md w-full glass-dark border border-white/5 p-10 rounded-[2.5rem] shadow-2xl text-center relative overflow-hidden">
@@ -237,9 +274,9 @@ const ConsultationRoom: React.FC = () => {
     return (
       <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 text-center z-[200]">
         <AlertTriangle className="w-12 h-12 text-red-500 mb-6" />
-        <h2 className="text-2xl font-black text-white mb-4 uppercase">Connection Error</h2>
+        <h2 className="text-2xl font-black text-white mb-4 uppercase">Identity Verification Failed</h2>
         <p className="text-slate-400 mb-8 max-w-sm">{errorMessage}</p>
-        <button onClick={() => navigate('/dashboard')} className="bg-white text-slate-900 px-8 py-3 rounded-xl font-black uppercase text-xs">Return to Dashboard</button>
+        <button onClick={() => navigate('/dashboard')} className="bg-white text-slate-900 px-8 py-3 rounded-xl font-black uppercase text-xs transition-transform active:scale-95 shadow-2xl">Return to Dashboard</button>
       </div>
     );
   }
@@ -255,7 +292,7 @@ const ConsultationRoom: React.FC = () => {
             <h2 className="text-sm font-black text-white uppercase tracking-wider">{expertId?.toUpperCase()}</h2>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{currentUser?.name}</span>
+              <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{currentUser?.name || 'Authorized Guest'}</span>
             </div>
           </div>
         </div>
@@ -267,6 +304,7 @@ const ConsultationRoom: React.FC = () => {
           <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-950">
             <Loader2 className="w-12 h-12 text-primary-500 animate-spin mb-4" />
             <p className="text-white font-black uppercase tracking-[0.3em] text-[10px]">Syncing Trust Tokens...</p>
+            <p className="text-slate-500 text-[8px] mt-2 font-black uppercase">Establishing Secure Handshake</p>
           </div>
         )}
 
@@ -275,7 +313,7 @@ const ConsultationRoom: React.FC = () => {
             <StreamVideo client={videoClient}>
               <StreamTheme className="h-full w-full max-w-6xl">
                 <StreamCall call={activeCall}>
-                  <div className="h-full relative rounded-[3rem] overflow-hidden border border-white/5 shadow-2xl">
+                  <div className="h-full relative rounded-[3rem] overflow-hidden border border-white/5 shadow-2xl bg-slate-900/40">
                     <SpeakerLayout participantsBarPosition='bottom' />
                     <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30">
                       <CustomCallControls onLeave={() => navigate('/dashboard')} />
