@@ -24,7 +24,6 @@ const InviteButton: React.FC = () => {
   const [copied, setCopied] = useState(false);
   
   const handleInvite = () => {
-    // Correctly capture the full URL including # and ?token=... for guests
     const url = window.location.href;
     navigator.clipboard.writeText(url);
     setCopied(true);
@@ -116,7 +115,7 @@ const ConsultationRoom: React.FC = () => {
       let targetCallId = expertId;
       let targetCallType = initialCallType;
 
-      // 1. Fetch Token if not provided in URL
+      // 1. Fetch Token if not provided (Host flow)
       if (!sessionToken && user) {
         const route = user.id.startsWith('guest_') 
           ? `/meetings/adhoc/${expertId}/guest-token` 
@@ -130,65 +129,61 @@ const ConsultationRoom: React.FC = () => {
         if (res.success) {
           sessionToken = res.data.token;
           if (res.data.callId) targetCallId = res.data.callId;
-          if (res.data.callType) targetCallType = res.data.callType;
         }
       }
 
       if (!sessionToken) {
-         if (!user) return; // Wait for login or guest join
+         if (!user) return; 
          throw new Error("Handshake failed: Security token missing.");
       }
 
-      // 2. Identity Sync from JWT
+      // 2. Identity Sync - CRITICAL: Must use the exact ID from the token
       let streamUserId = user?.id || 'anonymous';
       try {
         const decoded: any = jwtDecode(sessionToken);
         if (decoded.user_id) {
           streamUserId = decoded.user_id;
-          console.debug("🔑 Verified Stream Identity:", streamUserId);
+          console.debug("🔑 Verified Stream Identity from Token:", streamUserId);
         }
       } catch (e) {
-        console.warn("Could not verify JWT payload. Handshake may fail.");
+        console.warn("JWT Decode failed, falling back to local ID.");
       }
 
-      setLoadingStep('Connecting to Stream Mesh...');
+      setLoadingStep('Connecting to Signaling Mesh...');
 
       // 3. Initialize Client
+      // We don't use Promise.race here because we want to see the real SDK error if it fails
       const client = new StreamVideoClient({
         apiKey: "h6m4288m7v92",
         user: { 
           id: streamUserId, 
-          name: user?.name || 'Authorized User', 
-          image: user?.avatar 
+          name: user?.name || 'Authorized User'
         },
         token: sessionToken,
       });
 
-      // 4. Atomic Join Call
+      // 4. Join the call
       const call = client.call(targetCallType, targetCallId);
       
-      const joinTimeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Handshake timeout: The secure media mesh is taking too long to respond.")), 25000)
-      );
-
-      setLoadingStep('Establishing Media Secure Link...');
+      setLoadingStep('Joining Secure Channel...');
       
-      // Use create: true to ensure the call exists on Stream's servers
-      await Promise.race([
-        call.join({ create: true }),
-        joinTimeout
-      ]);
+      // We rely on the SDK's internal connection timeout
+      await call.join();
       
       setVideoClient(client);
       setActiveCall(call);
       setStatus('secure');
 
-      // 5. Start AI Node
       initGemini();
 
     } catch (err: any) {
-      console.error("Consultation Startup Error:", err);
-      setErrorMessage(err.message || "Failed to establish secure consultation channel.");
+      console.error("Consultation Handshake Error:", err);
+      // More descriptive error handling
+      let msg = "Failed to connect to the secure media mesh.";
+      if (err.message?.includes('token')) msg = "Identity token has expired or is invalid.";
+      if (err.message?.includes('Permission')) msg = "You do not have permission to access this secure channel.";
+      
+      setErrorMessage(`${msg} Details: ${err.message || 'Unknown'}`);
       setStatus('error');
     }
   };
@@ -255,7 +250,7 @@ const ConsultationRoom: React.FC = () => {
       if (audioContextRef.current) audioContextRef.current.close();
       geminiSessionPromiseRef.current?.then(s => s.close());
     };
-  }, [expertId]);
+  }, [expertId, initialToken]);
 
   if (!currentUser && !initialToken && status !== 'error') {
     return (
@@ -291,7 +286,9 @@ const ConsultationRoom: React.FC = () => {
           <AlertTriangle className="w-12 h-12 text-red-500" />
         </div>
         <h2 className="text-2xl font-black text-white mb-4 uppercase">Handshake Failed</h2>
-        <p className="text-slate-400 mb-8 max-w-sm text-sm leading-relaxed">{errorMessage}</p>
+        <div className="max-w-md bg-white/5 border border-white/10 p-4 rounded-2xl mb-8">
+          <p className="text-red-400 text-xs font-mono break-words leading-relaxed">{errorMessage}</p>
+        </div>
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <button onClick={() => window.location.reload()} className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black uppercase text-xs transition-transform active:scale-95 shadow-2xl">Retry Connection</button>
           <button onClick={() => navigate('/dashboard')} className="text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-white transition-colors">Return to Dashboard</button>
