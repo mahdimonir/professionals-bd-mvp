@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { 
   Shield, LogOut, LayoutDashboard, 
   ChevronDown, Sun, Moon, UserCircle
@@ -21,8 +21,17 @@ const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
+  // High contrast logic for light/dark mode and scroll states
+  const textClass = isScrolled 
+    ? (theme === 'dark' ? 'text-white' : 'text-slate-900') 
+    : (theme === 'dark' ? 'text-white' : 'text-slate-800');
+    
+  const linkClass = isScrolled
+    ? (theme === 'dark' ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-primary-600')
+    : (theme === 'dark' ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-primary-600');
+
   return (
-    <nav className={`fixed top-0 z-[60] w-full transition-all duration-300 ${isScrolled ? 'glass-dark py-2' : 'bg-transparent py-4'}`}>
+    <nav className={`fixed top-0 z-[60] w-full transition-all duration-300 ${isScrolled ? 'glass-dark py-2 shadow-sm' : 'bg-transparent py-4'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center gap-12 shrink-0">
@@ -30,7 +39,7 @@ const Navbar: React.FC<NavbarProps> = ({
               <div className="bg-primary-600 p-2 rounded-xl group-hover:bg-primary-500 transition-all shadow-lg shadow-primary-600/20 group-hover:rotate-6">
                 <Shield className="w-6 h-6 text-white" />
               </div>
-              <span className={`text-xl font-black tracking-tight transition-colors ${theme === 'dark' || isScrolled ? 'text-white' : 'text-slate-900'}`}>
+              <span className={`text-xl font-black tracking-tight transition-colors ${textClass}`}>
                 Pro<span className="text-primary-600">BD</span>
               </span>
             </Link>
@@ -39,8 +48,8 @@ const Navbar: React.FC<NavbarProps> = ({
               {['Experts', 'About', 'Contact'].map(item => (
                 <Link 
                   key={item} 
-                  to={`/${item.toLowerCase()}`} 
-                  className={`text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${theme === 'dark' || isScrolled ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-primary-600'}`}
+                  to={item === 'Experts' ? '/professionals' : `/${item.toLowerCase()}`} 
+                  className={`text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${linkClass}`}
                 >
                   {item}
                 </Link>
@@ -51,7 +60,7 @@ const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center space-x-6">
             <button 
               onClick={onToggleTheme}
-              className={`p-2.5 rounded-full transition-all border ${theme === 'dark' || isScrolled ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'} hover:scale-110`}
+              className={`p-2.5 rounded-full transition-all border ${theme === 'dark' ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'} hover:scale-110`}
             >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -60,10 +69,10 @@ const Navbar: React.FC<NavbarProps> = ({
               <div className="relative">
                 <button 
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
-                  className={`flex items-center gap-3 p-1.5 pr-4 rounded-full border transition-all group ${theme === 'dark' || isScrolled ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}
+                  className={`flex items-center gap-3 p-1.5 pr-4 rounded-full border transition-all group ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}
                 >
                   <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full border border-white/10 shadow-lg" />
-                  <span className={`text-xs font-bold transition-colors ${theme === 'dark' || isScrolled ? 'text-slate-200 group-hover:text-white' : 'text-slate-700 group-hover:text-primary-600'}`}>
+                  <span className={`text-xs font-bold transition-colors ${textClass}`}>
                     {user.name.split(' ')[0]}
                   </span>
                   <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
@@ -89,7 +98,7 @@ const Navbar: React.FC<NavbarProps> = ({
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <Link to="/login" className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 transition-colors ${theme === 'dark' || isScrolled ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-primary-600'}`}>Sign In</Link>
+                <Link to="/login" className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 transition-colors ${linkClass}`}>Sign In</Link>
                 <Link to="/register" className="bg-primary-600 hover:bg-primary-500 text-white px-7 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-primary-600/30 hover:-translate-y-0.5 active:scale-95">Register</Link>
               </div>
             )}

@@ -11,7 +11,7 @@ import Auth from './components/Auth';
 import StaticPages from './components/StaticPages';
 import ProfessionalDetail from './components/ProfessionalDetail';
 import ProfessionalList from './components/ProfessionalList';
-import { MOCK_PROFESSIONALS, TESTIMONIALS, CATEGORIES } from './constants';
+import { MOCK_PROFESSIONALS, TESTIMONIALS } from './constants';
 import { Search, Sparkles, Shield, ArrowRight, Zap, Target, Award, Users, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { AuthService } from './services/authService';
 import { User, Role } from './types';
@@ -41,19 +41,19 @@ const Homepage: React.FC<{ user: User | null }> = ({ user }) => {
             Find Your <span className="text-primary-600">Premium Expert</span>
           </h1>
           
-          <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-medium">
+          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto font-medium">
             Connect instantly with vetted legal, financial, and medical professionals.
           </p>
 
           {/* Unified Search Bar - Matching User Screenshot */}
-          <div className="max-w-4xl mx-auto w-full pt-8">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] flex items-center transition-all focus-within:ring-4 focus-within:ring-primary-500/5 group">
-              <div className="flex-1 flex items-center px-4">
-                <Search className="w-5 h-5 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+          <div className="max-w-4xl mx-auto w-full pt-8 px-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-2 shadow-xl flex flex-col md:flex-row items-center transition-all focus-within:ring-4 focus-within:ring-primary-500/5 group">
+              <div className="flex-1 flex items-center px-4 w-full">
+                <Search className="w-5 h-5 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
                 <input 
                   type="text" 
                   placeholder="Search specialties (e.g. Corporate Law, Tax Advisory)..." 
-                  className="w-full pl-4 pr-4 py-4 bg-transparent outline-none text-slate-700 dark:text-white font-medium text-base placeholder:text-slate-400"
+                  className="w-full pl-4 pr-4 py-5 bg-transparent outline-none text-slate-800 dark:text-white font-medium text-base placeholder:text-slate-400"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && navigate(`/professionals?q=${searchTerm}`)}
@@ -61,7 +61,7 @@ const Homepage: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
               <button 
                 onClick={() => navigate('/professionals')}
-                className="flex items-center gap-2 px-8 py-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-[1.5rem] border border-slate-100 dark:border-slate-700 font-bold text-sm transition-all active:scale-95 whitespace-nowrap"
+                className="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-[1.8rem] border border-slate-100 dark:border-slate-700 font-bold text-sm transition-all active:scale-95 whitespace-nowrap"
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 Filters
@@ -75,7 +75,7 @@ const Homepage: React.FC<{ user: User | null }> = ({ user }) => {
       <section className="py-24 bg-slate-50/50 dark:bg-slate-900/20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row items-end justify-between mb-12 gap-6">
-            <div className="max-w-xl">
+            <div className="max-w-xl text-left">
               <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-3">Featured Specialists</h2>
               <p className="text-slate-500 font-medium">Hand-picked professionals for immediate high-trust sessions.</p>
             </div>
@@ -92,7 +92,7 @@ const Homepage: React.FC<{ user: User | null }> = ({ user }) => {
         </div>
       </section>
 
-      {/* Trust Loop Section */}
+      {/* Rest of components... (simplified for brevity) */}
       <section className="py-24">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
@@ -123,7 +123,7 @@ const Homepage: React.FC<{ user: User | null }> = ({ user }) => {
       <section className="py-24 bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-            <div className="space-y-8">
+            <div className="space-y-8 text-left">
               <h2 className="text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-tight">
                 Trusted by the <br/> <span className="text-primary-600">Expert Class</span>
               </h2>
@@ -147,7 +147,7 @@ const Homepage: React.FC<{ user: User | null }> = ({ user }) => {
               {TESTIMONIALS.map(t => (
                 <div key={t.id} className="glass p-8 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-xl flex gap-6 items-start hover:-translate-y-1 transition-all">
                   <img src={t.avatar} className="w-14 h-14 rounded-2xl border-2 border-white/10" alt={t.name} />
-                  <div>
+                  <div className="text-left">
                     <p className="text-slate-600 dark:text-slate-300 italic mb-4 text-sm leading-relaxed font-medium">"{t.content}"</p>
                     <h4 className="font-black text-slate-900 dark:text-white text-[10px] uppercase tracking-widest">{t.name}</h4>
                     <p className="text-[9px] text-primary-600 font-black uppercase mt-1">{t.role}</p>
@@ -262,7 +262,7 @@ const AppContent: React.FC = () => {
       {!isConsultation && (
         <footer className="py-24 border-t border-slate-200 dark:border-slate-900 bg-slate-50 dark:bg-slate-950">
           <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-16">
-            <div className="space-y-6">
+            <div className="space-y-6 text-left">
               <Link to="/" className="flex items-center gap-2">
                 <Shield className="w-8 h-8 text-primary-600" />
                 <span className="font-black text-slate-900 dark:text-white text-2xl tracking-tighter">ProfessionalsBD</span>
@@ -272,7 +272,7 @@ const AppContent: React.FC = () => {
               </p>
             </div>
             {['Network', 'Platform', 'Legal'].map((group, idx) => (
-              <div key={idx}>
+              <div key={idx} className="text-left">
                 <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-8">{group}</h4>
                 <ul className="space-y-4">
                   <li><Link to="/professionals" className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary-600 transition-colors">Find Experts</Link></li>

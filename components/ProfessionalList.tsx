@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MOCK_PROFESSIONALS, CATEGORIES } from '../constants';
 import ExpertCard from './ExpertCard';
@@ -11,8 +11,10 @@ const ProfessionalList: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string | null>(searchParams.get('cat') || null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // Logic to ensure filtered list is updated when search term or category changes
   const filtered = MOCK_PROFESSIONALS.filter(e => {
-    const matchesSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = searchTerm === '' || 
+      e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.specialties.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = !activeCategory || e.category === activeCategory;
     return matchesSearch && matchesCategory;
@@ -21,27 +23,27 @@ const ProfessionalList: React.FC = () => {
   return (
     <div className="pt-32 pb-20 px-4 min-h-screen bg-white dark:bg-slate-950">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-12">
+        <div className="mb-12 text-left">
           <h1 className="text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4">Elite Experts</h1>
           <p className="text-slate-500 dark:text-slate-400 font-medium">Access high-trust professionals across 10+ industries in Bangladesh.</p>
         </div>
 
-        {/* Restore Unified Search & Filter Bar - Matching Home Style */}
+        {/* Unified Search & Filter Bar */}
         <div className="space-y-6 mb-12">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] flex flex-col md:flex-row items-center gap-3">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-2.5 shadow-xl flex flex-col md:flex-row items-center gap-3">
             <div className="flex-1 w-full relative flex items-center px-4">
-              <Search className="w-5 h-5 text-slate-300" />
+              <Search className="w-5 h-5 text-slate-400" />
               <input 
                 type="text" 
                 placeholder="Search by name, expertise, or location..." 
-                className="w-full pl-4 pr-4 py-4 bg-transparent outline-none text-slate-900 dark:text-white font-bold text-lg placeholder:text-slate-400"
+                className="w-full pl-4 pr-4 py-4 bg-transparent outline-none text-slate-800 dark:text-white font-bold text-lg placeholder:text-slate-400"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               {searchTerm && (
                 <button 
                   onClick={() => setSearchTerm('')}
-                  className="p-2 text-slate-300 hover:text-slate-600 dark:hover:text-white transition-colors"
+                  className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -52,22 +54,22 @@ const ProfessionalList: React.FC = () => {
             
             <div className="flex items-center gap-3 w-full md:w-auto px-2">
               <button 
-                className={`flex items-center gap-2 px-8 py-4 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest transition-all ${activeCategory ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300'}`}
+                className={`flex items-center gap-2 px-8 py-4 rounded-[1.8rem] font-black text-[10px] uppercase tracking-widest transition-all ${activeCategory ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 Filters
               </button>
               
-              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-[1.5rem] border border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-[1.8rem] border border-slate-100 dark:border-slate-700">
                 <button 
                   onClick={() => setViewMode('grid')}
-                  className={`p-3 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-900 text-primary-600 shadow-sm' : 'text-slate-400'}`}
+                  className={`p-3 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-900 text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   <Grid className="w-4 h-4" />
                 </button>
                 <button 
                   onClick={() => setViewMode('list')}
-                  className={`p-3 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-900 text-primary-600 shadow-sm' : 'text-slate-400'}`}
+                  className={`p-3 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-900 text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   <List className="w-4 h-4" />
                 </button>
