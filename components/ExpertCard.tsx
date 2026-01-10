@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ProfessionalProfile, User, AvailabilityStatus, Booking } from '../types';
-import { Star, CheckCircle, Clock, ArrowRight, Loader2, Circle } from 'lucide-react';
+import { Star, CheckCircle, Clock, ArrowRight, Loader2, Circle, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ApiService } from '../services/apiService';
 
@@ -14,33 +14,9 @@ const ExpertCard: React.FC<Props> = ({ expert, user }) => {
   const navigate = useNavigate();
   const [isBooking, setIsBooking] = useState(false);
 
-  const handleBook = async () => {
-    if (!user) {
-      alert("Please sign in to book a consultation.");
-      return;
-    }
-
-    setIsBooking(true);
-    try {
-      const startTime = new Date(Date.now() + 3600000).toISOString();
-      const endTime = new Date(Date.now() + 7200000).toISOString();
-
-      const response = await ApiService.post<Booking>('/bookings/', {
-        professionalId: expert.id,
-        startTime,
-        endTime,
-        notes: 'Consultation from marketplace'
-      });
-
-      if (response.success) {
-        navigate(`/consultation/${expert.id}`);
-      }
-    } catch (error: any) {
-      console.error(error);
-      alert(error.message || "Booking failed.");
-    } finally {
-      setIsBooking(false);
-    }
+  const handleBook = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/professionals/${expert.id}`);
   };
 
   const getStatusConfig = (status?: AvailabilityStatus) => {
@@ -59,11 +35,14 @@ const ExpertCard: React.FC<Props> = ({ expert, user }) => {
   const statusConfig = getStatusConfig(expert.status);
 
   return (
-    <div className="group relative glass border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden transition-all duration-500 hover:border-primary-500/50 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-5">
+    <div 
+      onClick={() => navigate(`/professionals/${expert.id}`)}
+      className="group relative glass border border-slate-200 dark:border-slate-800 rounded-[2.5rem] overflow-hidden transition-all duration-500 hover:border-primary-500/50 hover:shadow-[0_40px_80px_rgba(59,130,246,0.12)] cursor-pointer"
+    >
+      <div className="p-8">
+        <div className="flex items-start justify-between mb-8">
           <div className="relative">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-100 dark:border-slate-800 shadow-inner group-hover:scale-105 transition-transform duration-500">
+            <div className="w-24 h-24 rounded-3xl overflow-hidden border-4 border-white dark:border-slate-900 shadow-2xl group-hover:scale-105 transition-transform duration-700">
               <img 
                 src={expert.avatar} 
                 alt={expert.name} 
@@ -71,77 +50,64 @@ const ExpertCard: React.FC<Props> = ({ expert, user }) => {
               />
             </div>
             {expert.isVerified && (
-              <div className="absolute -bottom-2 -right-2 bg-primary-600 rounded-full p-1 border-2 border-white dark:border-slate-950 shadow-lg">
-                <CheckCircle className="w-3.5 h-3.5 text-white" />
+              <div className="absolute -bottom-3 -right-3 bg-primary-600 rounded-2xl p-2 border-4 border-white dark:border-slate-950 shadow-xl">
+                <ShieldCheck className="w-5 h-5 text-white" />
               </div>
             )}
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${statusConfig.bg} ${statusConfig.border} ${statusConfig.color}`}>
-              <div className={`w-1.5 h-1.5 rounded-full bg-current ${statusConfig.pulse ? 'animate-pulse' : ''}`}></div>
-              <span className="text-[10px] font-black uppercase tracking-wider">{expert.status || 'Offline'}</span>
+          <div className="flex flex-col items-end gap-3">
+            <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border ${statusConfig.bg} ${statusConfig.border} ${statusConfig.color}`}>
+              <div className={`w-2 h-2 rounded-full bg-current ${statusConfig.pulse ? 'animate-pulse' : ''}`}></div>
+              <span className="text-[9px] font-black uppercase tracking-widest">{expert.status || 'Offline'}</span>
             </div>
             <div className="flex flex-col items-end">
-              <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-800">
-                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{expert.rating}</span>
+              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                <span className="text-sm font-black text-slate-900 dark:text-slate-100">{expert.rating}</span>
               </div>
-              <p className="text-[9px] text-slate-400 mt-1 font-bold uppercase tracking-tighter">({expert.reviewCount} Reviews)</p>
+              <p className="text-[9px] text-slate-400 mt-1.5 font-black uppercase tracking-widest">({expert.reviewCount} reviews)</p>
             </div>
           </div>
         </div>
 
-        <div className="mb-4">
-          <h3 className="text-xl font-black text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+        <div className="mb-6">
+          <h3 className="text-2xl font-black text-slate-900 dark:text-white group-hover:text-primary-600 transition-colors tracking-tight">
             {expert.name}
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-            {expert.specialties[0]}
+          <p className="text-sm font-bold text-primary-600 uppercase tracking-widest mt-1">
+            {expert.category} Specialist
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-6">
-          {expert.specialties.slice(1, 3).map((s, i) => (
-            <span key={i} className="text-[10px] uppercase tracking-widest font-bold bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800">
+        <div className="flex flex-wrap gap-2 mb-8">
+          {expert.specialties.map((s, i) => (
+            <span key={i} className="text-[9px] uppercase tracking-widest font-black bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
               {s}
             </span>
           ))}
         </div>
 
-        <div className="space-y-4 pt-5 border-t border-slate-100 dark:border-slate-800">
+        <div className="space-y-6 pt-6 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-                <Clock className="w-4 h-4 text-primary-500" />
-                <span className="text-xs font-bold">{expert.experience} Yrs Exp.</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-                <Circle className="w-1.5 h-1.5 fill-slate-300 dark:fill-slate-700 ml-1.5" />
-                <span className="text-[10px] uppercase tracking-tight font-medium">{expert.languages.join(', ')}</span>
-              </div>
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+              <Clock className="w-5 h-5 text-primary-500" />
+              <span className="text-xs font-black uppercase tracking-widest">{expert.experience} Years Hub</span>
             </div>
             <div className="text-right">
-              <p className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-widest mb-0.5">Rate</p>
-              <p className="text-xl font-black text-primary-600 dark:text-primary-400">৳{expert.rates.toLocaleString()}</p>
+              <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mb-1">Session Rate</p>
+              <p className="text-2xl font-black text-slate-900 dark:text-white">
+                ৳{expert.rates.toLocaleString()}
+                <span className="text-[10px] text-slate-400 ml-1 font-bold">/ 60M</span>
+              </p>
             </div>
           </div>
           
           <button 
             onClick={handleBook}
-            disabled={isBooking}
-            className="w-full bg-slate-900 dark:bg-primary-600 hover:bg-primary-600 dark:hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 group/btn shadow-lg shadow-primary-600/10 active:scale-95"
+            className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black py-5 rounded-3xl text-[11px] uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-3 hover:bg-primary-600 hover:text-white dark:hover:bg-primary-600 dark:hover:text-white shadow-xl active:scale-95 group/btn"
           >
-            {isBooking ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Booking...
-              </>
-            ) : (
-              <>
-                Book Consultation
-                <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-              </>
-            )}
+            Initiate Consultation
+            <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-2 transition-transform" />
           </button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ExpertCard from './components/ExpertCard';
 import Dashboard from './components/Dashboard';
@@ -8,150 +8,180 @@ import ConsultationRoom from './components/ConsultationRoom';
 import AIAssistant from './components/AIAssistant';
 import Profile from './components/Profile';
 import Auth from './components/Auth';
-import { MOCK_PROFESSIONALS } from './constants';
-import { Search, SlidersHorizontal, Sparkles, Shield, Loader2, Check } from 'lucide-react';
+import StaticPages from './components/StaticPages';
+import ProfessionalDetail from './components/ProfessionalDetail';
+import ProfessionalList from './components/ProfessionalList';
+import { MOCK_PROFESSIONALS, TESTIMONIALS, CATEGORIES } from './constants';
+import { Search, Sparkles, Shield, ArrowRight, Zap, Target, Award, Users, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { AuthService } from './services/authService';
 import { User, Role } from './types';
 
-const AuthCallback: React.FC = () => {
-  const [searchParams] = useSearchParams();
+const Homepage: React.FC<{ user: User | null }> = ({ user }) => {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const accessToken = searchParams.get('accessToken');
-    const refreshToken = searchParams.get('refreshToken');
-    const userJson = searchParams.get('user');
-
-    if (accessToken && refreshToken && userJson) {
-      try {
-        const user = JSON.parse(decodeURIComponent(userJson));
-        AuthService.saveSession({ accessToken, refreshToken, user });
-        window.location.href = '/#/dashboard';
-      } catch (err) {
-        console.error('Failed to parse user data from callback', err);
-        navigate('/');
-      }
-    } else {
-      navigate('/');
-    }
-  }, [searchParams, navigate]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <Loader2 className="w-12 h-12 text-primary-500 animate-spin" />
-      <p className="text-slate-500 font-black uppercase tracking-widest text-xs">Finalizing Security Handshake...</p>
-    </div>
-  );
-};
-
-const Marketplace: React.FC<{ 
-  user: User | null; 
-  searchTerm: string; 
-  setSearchTerm: (s: string) => void;
-  isScrolled: boolean;
-}> = ({ user, searchTerm, setSearchTerm, isScrolled }) => {
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const navigate = useNavigate();
-
-  const categories = ['Legal', 'Financial', 'Medical', 'Tech'];
-
-  const filteredExperts = MOCK_PROFESSIONALS.filter(e => {
-    const matchesSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      e.specialties.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = !activeCategory || e.category === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="text-center mb-16 space-y-4">
-        <div className="inline-flex items-center gap-2 bg-primary-600/10 text-primary-600 dark:text-primary-400 px-4 py-1.5 rounded-full border border-primary-600/20 mb-4 animate-in fade-in slide-in-from-top-4 duration-700">
-          <Sparkles className="w-4 h-4" />
-          <span className="text-xs font-bold uppercase tracking-widest">The Trusted Network for Bangladesh</span>
+    <div className="animate-in fade-in duration-700">
+      {/* Hero Section - Matching User Screenshot */}
+      <section className="relative min-h-[85vh] flex flex-col items-center justify-center pt-32 pb-20 overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary-500/10 blur-[120px] rounded-full opacity-30"></div>
         </div>
-        <h1 className="text-5xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-          Find Your <span className="bg-gradient-to-r from-primary-500 to-indigo-600 bg-clip-text text-transparent">Premium Expert</span>
-        </h1>
-        <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-medium">
-          Connect instantly with vetted legal, financial, and medical professionals. 
-        </p>
-        
-        {!user && (
-          <div className="pt-8 flex flex-col items-center gap-4">
-            <button 
-              onClick={() => navigate('/login')}
-              className="flex items-center gap-3 bg-white text-slate-900 border border-slate-200 px-8 py-3.5 rounded-full font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all shadow-xl hover:shadow-primary-500/10 active:scale-95"
-            >
-              Get Started
-            </button>
-          </div>
-        )}
-      </div>
 
-      <div className={`transition-all duration-500 ${isScrolled ? 'opacity-0 scale-95 pointer-events-none h-0 mb-0' : 'opacity-100 scale-100 mb-12'}`}>
-        <div className="flex flex-col md:flex-row gap-4 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search specialties (e.g. Corporate Law, Tax Advisory)..." 
-              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-4 text-slate-900 dark:text-white focus:outline-none focus:border-primary-500 transition-all shadow-inner"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <div className="max-w-7xl mx-auto px-4 relative z-10 text-center space-y-8">
+          {/* Badge from Screenshot */}
+          <div className="flex justify-center">
+            <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-5 py-2 rounded-full border border-blue-100 dark:border-blue-800 animate-in slide-in-from-top-4 duration-700">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">The Trusted Network for Bangladesh</span>
+            </div>
           </div>
-          <div className="relative">
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all border h-full ${showFilters || activeCategory ? 'bg-primary-600 text-white border-primary-600' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}
-            >
-              <SlidersHorizontal className="w-5 h-5" />
-              {activeCategory ? `Filter: ${activeCategory}` : 'Filters'}
-            </button>
+          
+          <h1 className="text-6xl md:text-8xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9] max-w-4xl mx-auto">
+            Find Your <span className="text-primary-600">Premium Expert</span>
+          </h1>
+          
+          <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-medium">
+            Connect instantly with vetted legal, financial, and medical professionals.
+          </p>
 
-            {showFilters && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowFilters(false)}></div>
-                <div className="absolute right-0 mt-2 w-64 glass border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-4 z-20 animate-in fade-in zoom-in-95">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filter by Category</p>
-                    {activeCategory && (
-                      <button onClick={() => setActiveCategory(null)} className="text-[10px] text-primary-500 font-bold hover:underline">Clear</button>
-                    )}
+          {/* Unified Search Bar - Matching User Screenshot */}
+          <div className="max-w-4xl mx-auto w-full pt-8">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] flex items-center transition-all focus-within:ring-4 focus-within:ring-primary-500/5 group">
+              <div className="flex-1 flex items-center px-4">
+                <Search className="w-5 h-5 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+                <input 
+                  type="text" 
+                  placeholder="Search specialties (e.g. Corporate Law, Tax Advisory)..." 
+                  className="w-full pl-4 pr-4 py-4 bg-transparent outline-none text-slate-700 dark:text-white font-medium text-base placeholder:text-slate-400"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && navigate(`/professionals?q=${searchTerm}`)}
+                />
+              </div>
+              <button 
+                onClick={() => navigate('/professionals')}
+                className="flex items-center gap-2 px-8 py-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-[1.5rem] border border-slate-100 dark:border-slate-700 font-bold text-sm transition-all active:scale-95 whitespace-nowrap"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Professionals */}
+      <section className="py-24 bg-slate-50/50 dark:bg-slate-900/20">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-end justify-between mb-12 gap-6">
+            <div className="max-w-xl">
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-3">Featured Specialists</h2>
+              <p className="text-slate-500 font-medium">Hand-picked professionals for immediate high-trust sessions.</p>
+            </div>
+            <Link to="/professionals" className="flex items-center gap-2 text-primary-600 font-black text-[10px] uppercase tracking-widest hover:gap-4 transition-all">
+              See Full Network <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {MOCK_PROFESSIONALS.slice(0, 3).map(expert => (
+              <ExpertCard key={expert.id} expert={expert} user={user} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Loop Section */}
+      <section className="py-24">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4">The Trust Loop</h2>
+            <p className="text-slate-500 font-medium max-w-xl mx-auto">Our three-step framework for professional resolution in Bangladesh.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
+            <div className="hidden md:block absolute top-12 left-0 w-full h-px bg-slate-100 dark:bg-slate-800 z-0"></div>
+            {[
+              { icon: Search, title: "1. Vetting", desc: "Every expert is audited for credentials and professional ethics before joining." },
+              { icon: Zap, title: "2. Handshake", desc: "Select a high-fidelity time slot or connect instantly for urgent matters." },
+              { icon: Shield, title: "3. Resolution", desc: "Engage in end-to-end encrypted calls. Your privacy is our priority." }
+            ].map((step, idx) => (
+              <div key={idx} className="relative z-10 flex flex-col items-center text-center group">
+                <div className="w-20 h-20 bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 flex items-center justify-center mb-8 shadow-xl group-hover:border-primary-500 transition-all group-hover:-translate-y-2">
+                  <step.icon className="w-8 h-8 text-primary-600" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-4 uppercase tracking-tight">{step.title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed max-w-[250px] font-medium">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-24 bg-slate-50 dark:bg-slate-900/50">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+            <div className="space-y-8">
+              <h2 className="text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-tight">
+                Trusted by the <br/> <span className="text-primary-600">Expert Class</span>
+              </h2>
+              <div className="grid grid-cols-2 gap-8">
+                {[
+                  { icon: Target, label: "Platform Uptime", val: "99.9%" },
+                  { icon: Award, label: "Verified Sectors", val: "10+" },
+                  { icon: Users, label: "Client Success", val: "10k+" },
+                  { icon: Shield, label: "E2E Secured", val: "100%" }
+                ].map((stat, i) => (
+                  <div key={i} className="space-y-1">
+                    <stat.icon className="w-5 h-5 text-primary-500 mb-3" />
+                    <p className="text-2xl font-black text-slate-900 dark:text-white">{stat.val}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{stat.label}</p>
                   </div>
-                  <div className="space-y-2">
-                    {categories.map(cat => (
-                      <button 
-                        key={cat}
-                        onClick={() => { setActiveCategory(cat); setShowFilters(false); }}
-                        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${activeCategory === cat ? 'bg-primary-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'}`}
-                      >
-                        {cat}
-                        {activeCategory === cat && <Check className="w-3 h-3" />}
-                      </button>
-                    ))}
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {TESTIMONIALS.map(t => (
+                <div key={t.id} className="glass p-8 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-xl flex gap-6 items-start hover:-translate-y-1 transition-all">
+                  <img src={t.avatar} className="w-14 h-14 rounded-2xl border-2 border-white/10" alt={t.name} />
+                  <div>
+                    <p className="text-slate-600 dark:text-slate-300 italic mb-4 text-sm leading-relaxed font-medium">"{t.content}"</p>
+                    <h4 className="font-black text-slate-900 dark:text-white text-[10px] uppercase tracking-widest">{t.name}</h4>
+                    <p className="text-[9px] text-primary-600 font-black uppercase mt-1">{t.role}</p>
                   </div>
                 </div>
-              </>
-            )}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {filteredExperts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredExperts.map(expert => (
-            <ExpertCard key={expert.id} expert={expert} user={user} />
-          ))}
+      {/* CTA Section */}
+      <section className="py-24 px-4">
+        <div className="max-w-6xl mx-auto bg-primary-600 rounded-[3rem] p-16 md:p-24 text-center relative overflow-hidden shadow-2xl">
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 to-transparent opacity-30"></div>
+          <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-10 leading-tight relative z-10">
+            Professional Access. <br/> Zero Friction.
+          </h2>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 relative z-10">
+            <button 
+              onClick={() => navigate('/register')}
+              className="w-full sm:w-auto bg-white text-primary-600 px-12 py-6 rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl hover:scale-105 transition-all active:scale-95"
+            >
+              Sign Up for Free
+            </button>
+            <button 
+              onClick={() => navigate('/contact')}
+              className="w-full sm:w-auto bg-primary-700/50 text-white border-2 border-white/20 px-12 py-6 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-primary-700 transition-all active:scale-95"
+            >
+              Talk to Support
+            </button>
+          </div>
         </div>
-      ) : (
-        <div className="text-center py-24 glass rounded-3xl border border-slate-200 dark:border-slate-800">
-           <Search className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-           <p className="text-slate-500 font-black uppercase tracking-widest">No matching experts found</p>
-           <button onClick={() => { setSearchTerm(''); setActiveCategory(null); }} className="mt-4 text-primary-500 font-bold hover:underline">Reset all filters</button>
-        </div>
-      )}
+      </section>
     </div>
   );
 };
@@ -159,14 +189,12 @@ const Marketplace: React.FC<{
 const AppContent: React.FC = () => {
   const location = useLocation();
   const [user, setUser] = useState<User | null>(AuthService.getSession());
-  const [searchTerm, setSearchTerm] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(
     (localStorage.getItem('theme') as 'light' | 'dark') || 
     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   );
 
-  // Focus Mode: Hide global UI for consultation rooms
   const isConsultation = location.pathname.startsWith('/consultation/');
 
   useEffect(() => {
@@ -176,7 +204,7 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 200);
+      setIsScrolled(window.scrollY > 80);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -197,12 +225,10 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  };
+  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
   return (
-    <div className="min-h-screen flex flex-col transition-colors duration-300">
+    <div className="min-h-screen flex flex-col">
       {!isConsultation && (
         <Navbar 
           user={user} 
@@ -210,34 +236,59 @@ const AppContent: React.FC = () => {
           theme={theme} 
           onToggleTheme={toggleTheme} 
           onRoleChange={handleRoleChange} 
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
           isScrolled={isScrolled}
         />
       )}
       
       <main className="flex-1">
         <Routes>
-          <Route path="/" element={<Marketplace user={user} searchTerm={searchTerm} setSearchTerm={setSearchTerm} isScrolled={isScrolled} />} />
+          <Route path="/" element={<Homepage user={user} />} />
           <Route path="/login" element={<Auth mode="login" />} />
           <Route path="/register" element={<Auth mode="register" />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/dashboard" element={<Dashboard user={user} />} />
           <Route path="/profile" element={<Profile user={user} />} />
           <Route path="/consultation/:expertId" element={<ConsultationRoom />} />
+          <Route path="/professionals" element={<ProfessionalList />} />
+          <Route path="/professionals/:id" element={<ProfessionalDetail user={user} />} />
+          <Route path="/about" element={<StaticPages.About />} />
+          <Route path="/contact" element={<StaticPages.Contact />} />
+          <Route path="/terms" element={<StaticPages.Terms />} />
+          <Route path="/policy" element={<StaticPages.Policy />} />
         </Routes>
       </main>
       
       {!isConsultation && <AIAssistant />}
 
       {!isConsultation && (
-        <footer className="py-12 border-t border-slate-200 dark:border-slate-900 glass-dark">
-          <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-primary-600" />
-              <span className="font-black text-slate-900 dark:text-white">ProfessionalsBD</span>
+        <footer className="py-24 border-t border-slate-200 dark:border-slate-900 bg-slate-50 dark:bg-slate-950">
+          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-16">
+            <div className="space-y-6">
+              <Link to="/" className="flex items-center gap-2">
+                <Shield className="w-8 h-8 text-primary-600" />
+                <span className="font-black text-slate-900 dark:text-white text-2xl tracking-tighter">ProfessionalsBD</span>
+              </Link>
+              <p className="text-sm text-slate-500 leading-relaxed font-medium">
+                The high-trust expert network platform for the Bangladeshi digital economy.
+              </p>
             </div>
-            <p className="text-xs text-slate-500">© 2026 ProfessionalsBD. Premium High-Trust Expert Network.</p>
+            {['Network', 'Platform', 'Legal'].map((group, idx) => (
+              <div key={idx}>
+                <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-8">{group}</h4>
+                <ul className="space-y-4">
+                  <li><Link to="/professionals" className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary-600 transition-colors">Find Experts</Link></li>
+                  <li><Link to="/about" className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary-600 transition-colors">How it Works</Link></li>
+                  <li><Link to="/contact" className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary-600 transition-colors">Corporate Support</Link></li>
+                  <li><Link to="/terms" className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary-600 transition-colors">Legal Terms</Link></li>
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="max-w-7xl mx-auto px-4 mt-24 pt-12 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-8">
+            <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.3em]">© 2026 ProfessionalsBD Network. Dhaka Hub.</p>
+            <div className="flex gap-8">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Secure TLS 1.3</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ISO 27001 Certified</span>
+            </div>
           </div>
         </footer>
       )}
@@ -245,12 +296,10 @@ const AppContent: React.FC = () => {
   );
 };
 
-const App: React.FC = () => {
-  return (
-    <Router>
-      <AppContent />
-    </Router>
-  );
-};
+const App: React.FC = () => (
+  <Router>
+    <AppContent />
+  </Router>
+);
 
 export default App;

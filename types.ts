@@ -8,9 +8,17 @@ export enum Role {
 
 export enum BookingStatus {
   PENDING = 'PENDING',
+  PAID = 'PAID',
   CONFIRMED = 'CONFIRMED',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED'
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  SUCCESS = 'SUCCESS',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED'
 }
 
 export type AvailabilityStatus = 'Available Now' | 'Busy' | 'Offline';
@@ -26,12 +34,19 @@ export interface User {
   isSuspended?: boolean;
   bio?: string;
   location?: string;
+  address?: string;
+  memberSince?: string;
 }
 
-export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: User;
+export interface Payment {
+  id: string;
+  bookingId: string;
+  amount: number;
+  currency: string;
+  method: 'bKash' | 'SSLCommerz' | 'Card';
+  status: PaymentStatus;
+  transactionId: string;
+  createdAt: string;
 }
 
 export interface ApiResponse<T> {
@@ -45,6 +60,8 @@ export interface Review {
   rating: number;
   comment: string;
   createdAt: string;
+  userName: string;
+  userAvatar?: string;
 }
 
 export interface ProfessionalProfile {
@@ -52,7 +69,8 @@ export interface ProfessionalProfile {
   userId: string;
   name: string;
   avatar: string;
-  category: 'Legal' | 'Financial' | 'Medical' | 'Tech';
+  // Updated category list to match all available industries in constants.tsx
+  category: 'Legal' | 'Financial' | 'Medical' | 'Tech' | 'Architecture' | 'Education' | 'Marketing' | 'HR' | 'Real Estate' | 'Agriculture';
   specialties: string[];
   rates: number;
   experience: number;
@@ -63,6 +81,10 @@ export interface ProfessionalProfile {
   rating: number;
   reviewCount: number;
   status?: AvailabilityStatus;
+  education?: string;
+  certifications?: string[];
+  location?: string;
+  reviews?: Review[];
 }
 
 export interface Booking {
@@ -77,10 +99,18 @@ export interface Booking {
   professionalName: string;
   notes?: string;
   review?: Review;
+  paymentId?: string;
 }
 
 export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: Date;
+}
+
+// Added AuthResponse to fix export error in authService.ts
+export interface AuthResponse {
+  user: User;
+  accessToken: string;
+  refreshToken: string;
 }
